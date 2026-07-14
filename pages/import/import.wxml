@@ -1,0 +1,46 @@
+<view class="page safe-bottom" style="background: {{theme.pageBg}}; {{cssVars}}">
+  <view class="card" wx:if="{{!drafts.length}}">
+    <view class="card-title">旧账本 CSV 导入</view>
+    <view class="muted">表头需为：记账日期,所属类别,建材名称,金额,备注</view>
+    <view class="muted" style="margin-top: 8rpx;">本 App 导出的 CSV 会还原预算、合同与付款；旧版导出仍为「待购买」（备注里的「已交」不会自动记成已付）。</view>
+    <button class="btn-primary" style="margin-top: 24rpx;" bindtap="chooseFile">从聊天选文件</button>
+    <button class="btn-ghost" style="margin-top: 16rpx;" bindtap="pasteClipboard">从剪贴板粘贴</button>
+  </view>
+
+  <block wx:else>
+    <view class="card">
+      <view class="row-between">
+        <view class="card-title" style="margin:0;">已解析 {{drafts.length}} 行</view>
+        <text class="muted">已选 {{selectedCount}}</text>
+      </view>
+      <view class="muted" wx:if="{{duplicates}}">疑似重复 {{duplicates}} 条（默认未勾选）</view>
+      <view class="muted">合计约 {{sumText}}</view>
+      <view class="ops">
+        <text class="link" bindtap="selectAll">全选</text>
+        <text class="link" bindtap="selectNonDup">仅选非重复</text>
+        <text class="link" bindtap="clearAll">清空重来</text>
+      </view>
+    </view>
+
+    <view class="card list">
+      <view
+        class="row {{item.isDuplicate ? 'dup' : ''}} {{item.selected ? '' : 'off'}}"
+        wx:for="{{drafts}}"
+        wx:key="index"
+        data-index="{{index}}"
+        bindtap="toggleRow"
+      >
+        <text class="check">{{item.selected ? '☑' : '☐'}}</text>
+        <view class="body">
+          <view class="name">{{item.name}} <text class="tag" wx:if="{{item.isDuplicate}}">重复</text></view>
+          <view class="muted">{{item.stage}} · {{item.recordedDate || '无日期'}}{{item.remark ? ' · ' + item.remark : ''}}</view>
+        </view>
+        <text class="amt">{{item.amountText}}</text>
+      </view>
+    </view>
+
+    <view class="actions">
+      <button class="btn-primary" bindtap="confirmImport" disabled="{{!selectedCount}}">确认导入 {{selectedCount}} 项</button>
+    </view>
+  </block>
+</view>

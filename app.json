@@ -1,0 +1,48 @@
+{
+  "pages": [
+    "pages/overview/overview",
+    "pages/list/list",
+    "pages/stats/stats",
+    "pages/mine/mine",
+    "pages/detail/detail",
+    "pages/entry/entry",
+    "pages/pending/pending",
+    "pages/paid-gap/paid-gap",
+    "pages/taxonomy/taxonomy",
+    "pages/import/import"
+  ],
+  "window": {
+    "navigationBarTitleText": "装修记账",
+    "navigationBarBackgroundColor": "#E8F5E9",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#E8F5E9",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#666666",
+    "selectedColor": "#2E7D32",
+    "backgroundColor": "#DCECDC",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/overview/overview",
+        "text": "总览"
+      },
+      {
+        "pagePath": "pages/list/list",
+        "text": "清单"
+      },
+      {
+        "pagePath": "pages/stats/stats",
+        "text": "统计"
+      },
+      {
+        "pagePath": "pages/mine/mine",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

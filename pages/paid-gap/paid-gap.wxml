@@ -1,0 +1,30 @@
+<view class="page safe-bottom" style="background: {{theme.pageBg}}; {{cssVars}}">
+  <view class="chip-row filters">
+    <view class="chip {{tab==='overspend'?'active':''}}" data-tab="overspend" bindtap="setTab">超支项（{{overspendCount}}）</view>
+    <view class="chip {{tab==='surplus'?'active':''}}" data-tab="surplus" bindtap="setTab">节余项（{{surplusCount}}）</view>
+  </view>
+
+  <view class="card" wx:if="{{!rows.length}}">
+    <text class="muted">{{emptyHint}}</text>
+  </view>
+
+  <view class="card total-card" wx:if="{{showTotal}}">
+    <view class="muted">超支合计</view>
+    <view class="total-amt">{{gapTotalText}}</view>
+    <view class="muted detail-line">{{budgetPaidTotalText}}</view>
+  </view>
+
+  <view
+    class="card gap-card"
+    wx:for="{{rows}}"
+    wx:key="id"
+    bindtap="open"
+    data-id="{{item.id}}"
+  >
+    <view class="gap-top">
+      <text class="name">{{item.title}}</text>
+      <text class="gap-amt">{{item.gapText}}</text>
+    </view>
+    <view class="muted detail-line">{{item.budgetPaidText}}</view>
+  </view>
+</view>

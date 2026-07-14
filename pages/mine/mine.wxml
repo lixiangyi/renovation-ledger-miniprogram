@@ -1,0 +1,64 @@
+<view class="page safe-bottom" style="background: {{theme.pageBg}};{{cssVars}}">
+  <view class="card" wx:if="{{loadError}}">
+    <text class="err">{{loadError}}</text>
+  </view>
+
+  <view class="card">
+    <view class="card-title">资料</view>
+    <view class="field">
+      <text class="label">昵称</text>
+      <view class="input-wrap">
+        <input value="{{nickname}}" bindinput="onNicknameInput" bindblur="onNicknameBlur" placeholder="我" />
+        <text class="clear" wx:if="{{nickname}}" data-field="nickname" bindtap="clearField">✕</text>
+      </view>
+    </view>
+    <view class="field">
+      <text class="label">项目名</text>
+      <view class="input-wrap">
+        <input value="{{projectName}}" bindinput="onProjectInput" bindblur="onProjectBlur" />
+        <text class="clear" wx:if="{{projectName}}" data-field="projectName" bindtap="clearField">✕</text>
+      </view>
+    </view>
+    <view class="muted">成员：{{members}}</view>
+  </view>
+
+  <view class="card">
+    <view class="row-between">
+      <view class="switch-copy">
+        <view class="card-title no-margin">预算健康色</view>
+        <view class="muted">超支时以绿/橙/红提示</view>
+      </view>
+      <switch checked="{{healthColorEnabled}}" bindchange="onHealthSwitch" color="{{theme.primary}}" />
+    </view>
+    <block wx:if="{{healthColorEnabled}}">
+      <view class="row-between mild-row">
+        <text>轻度超支上限</text>
+        <text class="mild-value" style="color: {{theme.primary}};">{{mildOverMaxPercent}}%</text>
+      </view>
+      <slider
+        min="1"
+        max="100"
+        step="1"
+        value="{{mildOverMaxPercent}}"
+        activeColor="{{theme.primary}}"
+        bindchanging="onMildChanging"
+        bindchange="onMildChange"
+      />
+      <view class="muted">超支不超过该比例显示橙色，超过则红色</view>
+    </block>
+  </view>
+
+  <view class="card">
+    <view class="card-title">标签</view>
+    <button class="btn-ghost" bindtap="openTaxonomy">标签管理（阶段 / 分类 / 空间）</button>
+  </view>
+
+  <view class="card">
+    <view class="card-title">数据</view>
+    <button class="btn-primary" bindtap="exportCsv">导出 CSV（账本名_时间）</button>
+    <button class="btn-ghost spaced" bindtap="openImport">导入旧账本 CSV</button>
+    <button class="btn-ghost spaced" bindtap="resetSample">重置为示例数据</button>
+  </view>
+
+  <view class="muted footer">本地存储 · 未接云同步 · v0.1.0</view>
+</view>

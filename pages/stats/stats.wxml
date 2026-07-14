@@ -1,0 +1,50 @@
+<view class="page safe-bottom" style="background: {{theme.pageBg}}; {{cssVars}}">
+  <view class="chip-row filters">
+    <view class="chip {{groupBy==='category'?'active':''}}" data-v="category" bindtap="setGroupBy">按分类</view>
+    <view class="chip {{groupBy==='stage'?'active':''}}" data-v="stage" bindtap="setGroupBy">按阶段</view>
+    <view class="chip {{groupBy==='space'?'active':''}}" data-v="space" bindtap="setGroupBy">按空间</view>
+  </view>
+  <view class="chip-row filters">
+    <view class="chip {{pieMetric==='projected'?'active':''}}" data-v="projected" bindtap="setPieMetric">预计</view>
+    <view class="chip {{pieMetric==='paid'?'active':''}}" data-v="paid" bindtap="setPieMetric">已付</view>
+    <view class="chip {{pieMetric==='budget'?'active':''}}" data-v="budget" bindtap="setPieMetric">预算</view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">占比分布</view>
+    <view class="muted">合计 {{totalText}}</view>
+    <canvas
+      type="2d"
+      id="pie"
+      class="pie"
+      bindtouchstart="onPieTouch"
+    ></canvas>
+    <view class="muted tip">{{tipText}}</view>
+    <view
+      class="legend {{item.selected ? 'legend-active' : ''}}"
+      wx:for="{{legend}}"
+      wx:key="key"
+      data-index="{{index}}"
+      bindtap="onLegendTap"
+      style="{{item.selected ? 'border-color:' + item.color + ';' : ''}}"
+    >
+      <view class="legend-bar" style="background: {{item.color}};"></view>
+      <view class="dot" style="background: {{item.color}};"></view>
+      <text class="legend-text">{{item.key}}  {{item.percentText}} · {{item.amountText}}</text>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">分组明细</view>
+    <view class="row" wx:for="{{rows}}" wx:key="key">
+      <view>
+        <view class="name">{{item.key}}</view>
+        <view class="muted">预算 {{item.budgetText}} · 已付 {{item.paidText}}</view>
+      </view>
+      <view class="right">
+        <view>{{item.projectedText}}</view>
+        <view class="{{item.healthClass}}">{{item.overText}}</view>
+      </view>
+    </view>
+  </view>
+</view>

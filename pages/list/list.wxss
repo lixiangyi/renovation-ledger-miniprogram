@@ -1,0 +1,77 @@
+.page { min-height: 100vh; padding-top: 16rpx; }
+.filters { padding: 0 24rpx 8rpx; }
+.stage-head {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+  padding-right: 16rpx;
+}
+.stage-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+.chevron {
+  display: inline-block;
+  font-size: 22rpx;
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform 0.22s ease;
+}
+.chevron.open {
+  transform: rotate(90deg);
+}
+.stage-metrics {
+  font-size: 22rpx;
+}
+.stage-overspend {
+  font-size: 22rpx;
+  font-weight: 600;
+}
+.collapse {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.22s ease, opacity 0.18s ease;
+}
+.collapse.open {
+  max-height: 4000rpx;
+  opacity: 1;
+}
+.collapse-inner {
+  padding-bottom: 4rpx;
+}
+.item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20rpx 0;
+  border-top: 1rpx solid #eee;
+}
+.item-main { flex: 1; min-width: 0; padding-right: 12rpx; }
+.title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 6rpx;
+}
+.name {
+  flex: 1;
+  min-width: 0;
+  font-size: 28rpx;
+  font-weight: 600;
+}
+.status {
+  flex-shrink: 0;
+  font-size: 22rpx;
+  color: var(--primary, #2e7d32);
+  font-weight: 500;
+}
+.date {
+  font-size: 22rpx;
+  color: #666e68;
+  margin-bottom: 4rpx;
+}

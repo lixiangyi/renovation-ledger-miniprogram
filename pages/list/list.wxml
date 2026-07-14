@@ -1,0 +1,48 @@
+<view class="page safe-bottom" style="background: {{theme.pageBg}}; {{cssVars}}">
+  <view class="chip-row filters">
+    <view class="chip {{filter==='all'?'active':''}}" data-filter="all" bindtap="setFilter">全部</view>
+    <view class="chip {{filter==='TO_BUY'?'active':''}}" data-filter="TO_BUY" bindtap="setFilter">待购买</view>
+    <view class="chip {{filter==='PAYING'?'active':''}}" data-filter="PAYING" bindtap="setFilter">付款中</view>
+    <view class="chip {{filter==='SETTLED'?'active':''}}" data-filter="SETTLED" bindtap="setFilter">已结清</view>
+  </view>
+
+  <block wx:for="{{groups}}" wx:key="stage">
+    <view class="card">
+      <view class="row-between" bindtap="toggle" data-stage="{{item.stage}}">
+        <view class="stage-head">
+          <view class="stage-title-row">
+            <text class="chevron {{item.open ? 'open' : ''}}">▶</text>
+            <text class="card-title" style="margin:0;">{{item.stage}}（{{item.items.length}}）</text>
+          </view>
+          <text class="stage-metrics muted">预算 {{item.budgetText}} · 实际 {{item.actualText}}</text>
+          <text class="stage-overspend {{item.overspendClass}}">{{item.overspendText}}</text>
+        </view>
+        <text class="muted">{{item.open ? '收起' : '展开'}}</text>
+      </view>
+      <view class="collapse {{item.open ? 'open' : ''}}">
+        <view class="collapse-inner">
+          <view
+            class="item"
+            wx:for="{{item.items}}"
+            wx:for-item="row"
+            wx:key="id"
+            bindtap="openItem"
+            data-id="{{row.id}}"
+          >
+            <view class="item-main">
+              <view class="title-row">
+                <text class="name">{{row.name}}</text>
+                <text class="status">{{row.statusText}}</text>
+              </view>
+              <view class="date">{{row.dateText}}</view>
+              <view class="muted">预算 {{row.budgetText}}</view>
+            </view>
+            <text class="muted">›</text>
+          </view>
+        </view>
+      </view>
+    </view>
+  </block>
+
+  <view class="fab" bindtap="goEntry">＋ 记一笔</view>
+</view>

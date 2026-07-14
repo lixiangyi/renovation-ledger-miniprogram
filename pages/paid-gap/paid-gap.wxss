@@ -1,0 +1,32 @@
+.page { min-height: 100vh; padding-top: 16rpx; }
+.filters { padding: 0 24rpx 8rpx; }
+.total-card {
+  background: var(--primary-container, #E8F5E9);
+}
+.total-amt {
+  font-size: 40rpx;
+  font-weight: 700;
+  margin-top: 6rpx;
+  color: var(--primary, #2E7D32);
+}
+.gap-card { display: block; }
+.gap-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10rpx;
+  gap: 16rpx;
+}
+.name {
+  font-weight: 500;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gap-amt {
+  font-weight: 600;
+  color: var(--primary, #2E7D32);
+  flex-shrink: 0;
+}
+.detail-line { margin-top: 4rpx; font-size: 24rpx; }

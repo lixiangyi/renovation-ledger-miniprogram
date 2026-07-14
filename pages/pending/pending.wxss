@@ -1,0 +1,4 @@
+.page { min-height: 100vh; padding-top: 16rpx; }
+.filters { padding: 0 24rpx 8rpx; }
+.row { display: flex; justify-content: space-between; align-items: center; }
+.name { font-weight: 500; margin-bottom: 6rpx; }

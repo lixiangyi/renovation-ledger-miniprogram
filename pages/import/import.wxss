@@ -1,0 +1,29 @@
+.page { min-height: 100vh; padding-top: 16rpx; }
+.ops {
+  display: flex;
+  gap: 28rpx;
+  margin-top: 16rpx;
+}
+.link { color: var(--primary, #2e7d32); font-size: 26rpx; }
+.list .row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12rpx;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid #eee;
+}
+.list .row:last-child { border-bottom: none; }
+.list .row.off { opacity: 0.45; }
+.list .row.dup .tag {
+  margin-left: 8rpx;
+  font-size: 20rpx;
+  color: #888;
+  background: rgba(0,0,0,0.06);
+  padding: 2rpx 8rpx;
+  border-radius: 6rpx;
+}
+.check { width: 40rpx; flex-shrink: 0; font-size: 32rpx; line-height: 1.2; }
+.body { flex: 1; min-width: 0; }
+.name { font-size: 28rpx; font-weight: 500; }
+.amt { flex-shrink: 0; font-size: 28rpx; }
+.actions { padding: 8rpx 24rpx 40rpx; }

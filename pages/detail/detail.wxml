@@ -1,0 +1,104 @@
+<view class="page safe-bottom" style="background: {{theme.pageBg}}; {{cssVars}}" wx:if="{{view.name}}">
+  <view class="card">
+    <view class="name">{{view.name}}</view>
+    <view class="muted">{{view.statusText}} · {{view.stage}}{{view.category ? ' / ' + view.category : ''}}{{view.space ? ' · ' + view.space : ''}}</view>
+    <view class="grid">
+      <view><text class="muted">预算</text><view>{{view.budgetText}}</view></view>
+      <view><text class="muted">合同</text><view>{{view.contractText}}</view></view>
+      <view><text class="muted">预计</text><view>{{view.effectiveText}}</view></view>
+      <view><text class="muted">已付</text><view>{{view.paidText}}</view></view>
+    </view>
+    <view class="muted" style="margin-top: 12rpx;">备注：{{view.remark}}</view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">付款记录</view>
+    <view class="pay" wx:for="{{view.payments}}" wx:key="id" data-id="{{item.id}}" bindtap="openEditPay">
+      <view>
+        <view>{{item.title}} · {{item.status}}</view>
+        <view class="muted" wx:if="{{item.note}}">{{item.note}}</view>
+        <view class="edit-hint">点击修改</view>
+      </view>
+      <text>{{item.amountText}}</text>
+    </view>
+    <view class="muted" wx:if="{{!view.payments.length}}">暂无付款</view>
+  </view>
+
+  <view class="actions">
+    <button class="btn-primary" bindtap="addPayment">记一笔付款</button>
+    <button class="btn-ghost" bindtap="openEditItem">编辑预算项</button>
+    <button class="btn-ghost" bindtap="settle">标记已结清</button>
+    <button class="btn-danger" bindtap="remove">删除</button>
+  </view>
+
+  <view class="mask" wx:if="{{editingItem}}" catchtouchmove="true">
+    <view class="sheet">
+      <view class="card-title">编辑预算项</view>
+      <view class="field">
+        <text class="label">名称</text>
+        <input value="{{editName}}" bindinput="onEditName" />
+      </view>
+      <view class="field">
+        <text class="label">阶段</text>
+        <picker mode="selector" range="{{stageOptions}}" value="{{editStageIndex}}" bindchange="onEditStage">
+          <view class="picker">{{editStage || '请选择'}}</view>
+        </picker>
+      </view>
+      <view class="field">
+        <text class="label">分类</text>
+        <picker mode="selector" range="{{categoryOptions}}" value="{{editCategoryIndex}}" bindchange="onEditCategory">
+          <view class="picker">{{editCategory || '（不填）'}}</view>
+        </picker>
+      </view>
+      <view class="field">
+        <text class="label">空间</text>
+        <picker mode="selector" range="{{spaceOptions}}" value="{{editSpaceIndex}}" bindchange="onEditSpace">
+          <view class="picker">{{editSpace || '（不填）'}}</view>
+        </picker>
+      </view>
+      <view class="field">
+        <text class="label">预算</text>
+        <input type="digit" value="{{editBudgetYuan}}" bindinput="onEditBudget" placeholder="元" />
+      </view>
+      <view class="field">
+        <text class="label">合同</text>
+        <input type="digit" value="{{editContractYuan}}" bindinput="onEditContract" placeholder="可选" />
+      </view>
+      <view class="field">
+        <text class="label">备注</text>
+        <input value="{{editRemark}}" bindinput="onEditRemark" placeholder="可选" />
+      </view>
+      <button class="btn-primary" bindtap="saveItem">保存</button>
+      <button class="btn-ghost" style="margin-top: 16rpx;" bindtap="closeEditItem">取消</button>
+    </view>
+  </view>
+
+  <view class="mask" wx:if="{{editing}}" catchtouchmove="true">
+    <view class="sheet">
+      <view class="card-title">编辑付款</view>
+      <view class="field">
+        <text class="label">类型</text>
+        <picker mode="selector" range="{{payTypes}}" range-key="label" value="{{editTypeIndex}}" bindchange="onEditType">
+          <view class="picker">{{payTypes[editTypeIndex].label}}</view>
+        </picker>
+      </view>
+      <view class="field">
+        <text class="label">金额</text>
+        <input type="digit" value="{{editAmountYuan}}" bindinput="onEditAmount" placeholder="元" />
+      </view>
+      <view class="field">
+        <text class="label">状态</text>
+        <picker mode="selector" range="{{payStatusList}}" range-key="label" value="{{editStatusIndex}}" bindchange="onEditStatus">
+          <view class="picker">{{payStatusList[editStatusIndex].label}}</view>
+        </picker>
+      </view>
+      <view class="field">
+        <text class="label">备注</text>
+        <input value="{{editNote}}" bindinput="onEditNote" placeholder="可选" />
+      </view>
+      <button class="btn-primary" bindtap="savePay">保存</button>
+      <button class="btn-ghost" style="margin-top: 16rpx;" bindtap="closeEdit">取消</button>
+      <button class="btn-danger" style="margin-top: 16rpx;" bindtap="deletePay">删除此付款</button>
+    </view>
+  </view>
+</view>

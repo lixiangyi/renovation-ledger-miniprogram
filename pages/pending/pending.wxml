@@ -1,0 +1,25 @@
+<view class="page safe-bottom" style="background: {{theme.pageBg}}; {{cssVars}}">
+  <view class="chip-row filters">
+    <view class="chip {{tab==='unpaid'?'active':''}}" data-tab="unpaid" bindtap="setTab">待付尾款</view>
+    <view class="chip {{tab==='tobuy'?'active':''}}" data-tab="tobuy" bindtap="setTab">待购买</view>
+  </view>
+
+  <view class="card" wx:if="{{!rows.length}}">
+    <text class="muted">暂无数据</text>
+  </view>
+
+  <view
+    class="card row"
+    wx:for="{{rows}}"
+    wx:key="id"
+    bindtap="open"
+    data-id="{{item.id}}"
+    data-item-id="{{item.itemId || item.id}}"
+  >
+    <view>
+      <view class="name">{{item.title}}</view>
+      <view class="muted">{{item.sub}}</view>
+    </view>
+    <text>{{item.amountText}}</text>
+  </view>
+</view>

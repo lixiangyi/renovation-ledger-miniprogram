@@ -1,0 +1,37 @@
+<view class="page safe-bottom" style="background: {{theme.pageBg}}; {{cssVars}}">
+  <view class="tabs">
+    <view
+      class="tab {{kind === 'stages' ? 'active' : ''}}"
+      data-kind="stages"
+      bindtap="onKind"
+    >阶段</view>
+    <view
+      class="tab {{kind === 'categories' ? 'active' : ''}}"
+      data-kind="categories"
+      bindtap="onKind"
+    >分类</view>
+    <view
+      class="tab {{kind === 'spaces' ? 'active' : ''}}"
+      data-kind="spaces"
+      bindtap="onKind"
+    >空间</view>
+  </view>
+
+  <view class="hint muted">维护「{{kindLabel}}」选项，录入与编辑下拉会同步使用。</view>
+
+  <view class="card">
+    <view class="row" wx:for="{{options}}" wx:key="*this">
+      <text class="name">{{item}}</text>
+      <view class="ops">
+        <text class="link" data-value="{{item}}" bindtap="onRename">改名</text>
+        <text class="link danger" data-value="{{item}}" bindtap="onRemove">删除</text>
+      </view>
+    </view>
+    <view class="muted" wx:if="{{!options.length}}">暂无选项</view>
+  </view>
+
+  <view class="actions">
+    <button class="btn-primary" bindtap="onAdd">新增</button>
+    <button class="btn-ghost" bindtap="onReset">恢复默认</button>
+  </view>
+</view>

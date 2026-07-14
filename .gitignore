@@ -1,0 +1,12 @@
+# Dependencies / caches
+node_modules/
+.miniprogram_npm/
+
+# Local WeChat DevTools
+project.private.config.json
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.log

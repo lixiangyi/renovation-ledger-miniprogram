@@ -1,0 +1,161 @@
+  <view class="page safe-bottom" style="background: {{theme.pageBg}}; {{cssVars}}">
+  <view class="card" wx:if="{{loadError}}">
+    <text class="err">{{loadError}}</text>
+  </view>
+
+  <view class="header row-between">
+    <view class="header-left" bindtap="openDrawer">
+      <text class="menu-icon">☰</text>
+      <text class="title">总览</text>
+    </view>
+    <text class="muted project-chip" bindtap="startRenameCurrent">{{projectName}}</text>
+  </view>
+
+  <view class="drawer-mask" wx:if="{{drawerOpen}}" bindtap="closeDrawer"></view>
+  <view class="drawer {{drawerOpen ? 'open' : ''}}">
+    <view class="drawer-title">我的账本</view>
+    <view
+      class="drawer-item {{item.id===currentProjectId?'active':''}}"
+      wx:for="{{projects}}"
+      wx:key="id"
+    >
+      <view class="drawer-item-main" data-id="{{item.id}}" bindtap="switchLedger">{{item.name}}</view>
+      <text
+        class="drawer-item-edit"
+        data-id="{{item.id}}"
+        data-name="{{item.name}}"
+        catchtap="startRenameLedger"
+      >改名</text>
+    </view>
+    <view class="drawer-create" bindtap="startCreateLedger">+ 新建账本</view>
+  </view>
+
+  <view class="create-mask" wx:if="{{showCreate}}" catchtouchmove="noop">
+    <view class="create-dialog">
+      <view class="card-title">新建账本</view>
+      <input class="create-input" value="{{newLedgerName}}" bindinput="onNewLedgerInput" placeholder="账本名称" />
+      <view class="create-actions">
+        <button class="btn-ghost" size="mini" bindtap="cancelCreateLedger">取消</button>
+        <button class="btn-primary" size="mini" bindtap="confirmCreateLedger">创建</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="create-mask" wx:if="{{showRename}}" catchtouchmove="noop">
+    <view class="create-dialog">
+      <view class="card-title">修改账本名称</view>
+      <input class="create-input" value="{{renameLedgerName}}" bindinput="onRenameLedgerInput" placeholder="账本名称" focus="{{true}}" />
+      <view class="create-actions">
+        <button class="btn-ghost" size="mini" bindtap="cancelRenameLedger">取消</button>
+        <button class="btn-primary" size="mini" bindtap="confirmRenameLedger">保存</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="muted">总预算</view>
+    <view class="amount">{{metrics.totalBudgetText}}</view>
+  </view>
+
+  <view class="grid">
+    <view class="card half" bindtap="togglePaid">
+      <view class="muted">已实付 {{paidExpanded ? '▴' : '▾'}}</view>
+      <view class="amount sm">{{metrics.paidText}}</view>
+      <view class="hint {{healthClass}}">{{metrics.currentHint}}</view>
+    </view>
+    <view class="card half" bindtap="togglePending">
+      <view class="muted">待花费 {{pendingExpanded ? '▴' : '▾'}}</view>
+      <view class="amount sm">{{metrics.pendingText}}</view>
+      <view class="muted tiny">尾款 {{metrics.unpaidFinalText}} · 待购 {{metrics.toBuyText}}</view>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{paidExpanded}}">
+    <view class="tabs">
+      <view class="tab {{paidTab===0?'active':''}}" data-tab="0" bindtap="setPaidTab">超支项（{{overspendRows.length}}）</view>
+      <view class="tab {{paidTab===1?'active':''}}" data-tab="1" bindtap="setPaidTab">节余项（{{surplusRows.length}}）</view>
+    </view>
+    <block wx:if="{{paidTab===0}}">
+      <view class="muted" wx:if="{{!overspendRows.length}}">暂无单项超支（已付未超预算）</view>
+      <view class="row-line" wx:for="{{overspendPreview}}" wx:key="id" data-id="{{item.id}}" bindtap="openItem">
+        <text class="name">{{item.name}}</text>
+        <text>{{item.amountText}}</text>
+      </view>
+      <view class="muted" wx:if="{{overspendMore}}">…还有 {{overspendMore}} 项</view>
+    </block>
+    <block wx:else>
+      <view class="muted" wx:if="{{!surplusRows.length}}">暂无单项节余（已结清且未花满预算）</view>
+      <view class="row-line" wx:for="{{surplusPreview}}" wx:key="id" data-id="{{item.id}}" bindtap="openItem">
+        <text class="name">{{item.name}}</text>
+        <text>{{item.amountText}}</text>
+      </view>
+      <view class="muted" wx:if="{{surplusMore}}">…还有 {{surplusMore}} 项</view>
+    </block>
+    <view class="link" bindtap="goPaidGap">查看全部明细 ›</view>
+  </view>
+
+  <view class="card" wx:if="{{pendingExpanded}}">
+    <view class="tabs">
+      <view class="tab {{pendingTab==='unpaid'?'active':''}}" data-tab="unpaid" bindtap="setPendingTab">待付尾款</view>
+      <view class="tab {{pendingTab==='tobuy'?'active':''}}" data-tab="tobuy" bindtap="setPendingTab">待购买</view>
+    </view>
+    <view class="link" bindtap="goPending" data-tab="{{pendingTab}}">查看全部明细 ›</view>
+  </view>
+
+  <view class="card">
+    <view class="row-between">
+      <view class="muted">预计花费</view>
+      <text class="tag {{projectedHealthClass}}">{{metrics.projectedHealthLabel}}</text>
+    </view>
+    <view class="amount">{{metrics.projectedText}}</view>
+    <view class="hint {{projectedHealthClass}}">{{metrics.projectedHint}}</view>
+  </view>
+
+  <view class="card">
+    <view class="prog-row">
+      <text>预算执行</text>
+      <text class="{{budgetRateClass || 'muted'}}">{{metrics.budgetRate}}%</text>
+    </view>
+    <progress percent="{{metrics.progressBudget}}" stroke-width="6" activeColor="{{theme.primary}}" backgroundColor="#e0e0e0" />
+    <view class="prog-row" style="margin-top: 20rpx;">
+      <text>预计执行</text>
+      <text class="{{projectedRateClass || 'muted'}}">{{metrics.projectedRate}}%</text>
+    </view>
+    <progress percent="{{metrics.progressProjected}}" stroke-width="6" activeColor="{{theme.primary}}" backgroundColor="#e0e0e0" />
+  </view>
+
+  <view class="card" wx:if="{{recent.length}}">
+    <view class="card-title">最近记账</view>
+    <view
+      class="recent-card"
+      wx:for="{{recent}}"
+      wx:key="id"
+      data-id="{{item.itemId}}"
+      bindtap="openItem"
+    >
+      <view class="recent-row">
+        <view class="recent-main">
+          <text class="tiny muted">预算项</text>
+          <text class="name">{{item.title}}</text>
+        </view>
+        <view class="recent-amt">
+          <text class="tiny muted">预算</text>
+          <text>{{item.budgetText}}</text>
+        </view>
+      </view>
+      <view class="recent-divider"></view>
+      <view class="recent-row">
+        <view class="recent-main">
+          <text class="tiny muted">实际付款</text>
+          <text class="muted">{{item.payMeta}}</text>
+        </view>
+        <view class="recent-amt">
+          <text class="tiny muted">实付</text>
+          <text class="paid">{{item.amountText}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="fab" bindtap="goEntry">＋ 记一笔</view>
+</view>

@@ -1,0 +1,32 @@
+.page { min-height: 100vh; padding-top: 16rpx; }
+.filters { padding: 0 24rpx 12rpx; }
+.pie { width: 100%; height: 480rpx; margin: 16rpx 0; }
+.tip { margin-bottom: 12rpx; font-size: 22rpx; }
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 16rpx 14rpx;
+  font-size: 26rpx;
+  border-radius: 14rpx;
+  border: 2rpx solid transparent;
+  background: #fff;
+  margin-bottom: 8rpx;
+}
+.legend-active {
+  background: rgba(46, 125, 50, 0.16);
+  border-width: 3rpx;
+  font-weight: 700;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+}
+.legend-bar {
+  width: 8rpx;
+  height: 36rpx;
+  border-radius: 4rpx;
+  flex-shrink: 0;
+}
+.legend-text { flex: 1; min-width: 0; }
+.dot { width: 18rpx; height: 18rpx; border-radius: 50%; flex-shrink: 0; }
+.row { display: flex; justify-content: space-between; padding: 16rpx 0; border-top: 1rpx solid #eee; }
+.name { font-weight: 500; margin-bottom: 6rpx; }
+.right { text-align: right; font-size: 24rpx; }

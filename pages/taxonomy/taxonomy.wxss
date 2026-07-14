@@ -1,0 +1,35 @@
+.page { min-height: 100vh; padding-top: 16rpx; }
+.tabs {
+  display: flex;
+  margin: 0 24rpx 8rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+}
+.tab {
+  flex: 1;
+  text-align: center;
+  padding: 22rpx 0;
+  color: #666;
+  font-size: 28rpx;
+}
+.tab.active {
+  color: var(--primary, #2E7D32);
+  font-weight: 600;
+  background: rgba(46, 125, 50, 0.08);
+}
+.hint { padding: 16rpx 32rpx 8rpx; font-size: 24rpx; }
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #eee;
+}
+.row:last-child { border-bottom: none; }
+.name { font-size: 30rpx; }
+.ops { display: flex; gap: 24rpx; }
+.link { color: var(--primary, #2E7D32); font-size: 26rpx; }
+.link.danger { color: #c62828; }
+.actions { padding: 8rpx 24rpx 40rpx; }
+.actions button { margin-bottom: 16rpx; }

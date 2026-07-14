@@ -1,0 +1,79 @@
+<view class="page safe-bottom" style="background: {{theme.pageBg}}; {{cssVars}}">
+  <view class="card" wx:if="{{mode==='item'}}">
+    <view class="field">
+      <text class="label">名称</text>
+      <view class="input-wrap">
+        <input placeholder="如：全屋定制" value="{{name}}" bindinput="onName" />
+        <text class="clear" wx:if="{{name}}" data-field="name" bindtap="clearField">✕</text>
+      </view>
+    </view>
+    <view class="field">
+      <text class="label">阶段</text>
+      <picker mode="selector" range="{{stageOptions}}" value="{{stageIndex}}" bindchange="onStage">
+        <view class="picker">{{stage || '请选择'}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="label">分类</text>
+      <picker mode="selector" range="{{categoryOptions}}" value="{{categoryIndex}}" bindchange="onCategory">
+        <view class="picker">{{category || '（不填）'}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="label">空间</text>
+      <picker mode="selector" range="{{spaceOptions}}" value="{{spaceIndex}}" bindchange="onSpace">
+        <view class="picker">{{space || '（不填）'}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="label">预算(元)</text>
+      <view class="input-wrap">
+        <input type="digit" placeholder="0" value="{{budgetYuan}}" bindinput="onBudget" />
+        <text class="clear" wx:if="{{budgetYuan}}" data-field="budgetYuan" bindtap="clearField">✕</text>
+      </view>
+    </view>
+    <view class="field">
+      <text class="label">合同(元)</text>
+      <view class="input-wrap">
+        <input type="digit" placeholder="可选" value="{{contractYuan}}" bindinput="onContract" />
+        <text class="clear" wx:if="{{contractYuan}}" data-field="contractYuan" bindtap="clearField">✕</text>
+      </view>
+    </view>
+    <view class="field">
+      <text class="label">备注</text>
+      <view class="input-wrap">
+        <input placeholder="可选" value="{{remark}}" bindinput="onRemark" />
+        <text class="clear" wx:if="{{remark}}" data-field="remark" bindtap="clearField">✕</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="card" wx:else>
+    <view class="muted">为「{{name}}」添加付款</view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">{{mode==='item' ? '可选：同时记一笔付款' : '付款'}}</view>
+    <view class="field">
+      <text class="label">类型</text>
+      <picker mode="selector" range="{{payTypes}}" range-key="label" value="{{payTypeIndex}}" bindchange="onPayType">
+        <view class="picker">{{payTypes[payTypeIndex].label}}</view>
+      </picker>
+    </view>
+    <view class="field">
+      <text class="label">金额(元)</text>
+      <view class="input-wrap">
+        <input type="digit" placeholder="{{mode==='item'?'可不填':'必填'}}" value="{{payAmountYuan}}" bindinput="onPayAmount" />
+        <text class="clear" wx:if="{{payAmountYuan}}" data-field="payAmountYuan" bindtap="clearField">✕</text>
+      </view>
+    </view>
+    <view class="row-between">
+      <text>已支付</text>
+      <switch checked="{{payPaid}}" bindchange="onPayPaid" color="{{theme.primary}}" />
+    </view>
+  </view>
+
+  <view class="actions">
+    <button class="btn-primary" bindtap="save">保存</button>
+  </view>
+</view>
