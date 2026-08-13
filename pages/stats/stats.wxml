@@ -22,9 +22,9 @@
     <view class="muted tip">{{tipText}}</view>
     <view
       class="legend {{item.selected ? 'legend-active' : ''}}"
-      wx:for="{{legend}}"
+      wx:for="{{displayLegend}}"
       wx:key="key"
-      data-index="{{index}}"
+      data-index="{{item.index}}"
       bindtap="onLegendTap"
       style="{{item.selected ? 'border-color:' + item.color + ';' : ''}}"
     >

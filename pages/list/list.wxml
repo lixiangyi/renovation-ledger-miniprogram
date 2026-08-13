@@ -1,25 +1,55 @@
 <view class="page safe-bottom" style="background: {{theme.pageBg}}; {{cssVars}}">
-  <view class="chip-row filters">
-    <view class="chip {{filter==='all'?'active':''}}" data-filter="all" bindtap="setFilter">全部</view>
-    <view class="chip {{filter==='TO_BUY'?'active':''}}" data-filter="TO_BUY" bindtap="setFilter">待购买</view>
-    <view class="chip {{filter==='PAYING'?'active':''}}" data-filter="PAYING" bindtap="setFilter">付款中</view>
-    <view class="chip {{filter==='SETTLED'?'active':''}}" data-filter="SETTLED" bindtap="setFilter">已结清</view>
+  <view class="utab-row filters">
+    <view
+      class="utab {{filter===tab.key?'active':''}}"
+      wx:for="{{tabs}}"
+      wx:for-item="tab"
+      wx:key="key"
+      data-filter="{{tab.key}}"
+      bindtap="setFilter"
+    >
+      <text class="utab-label">{{tab.label}} ({{tab.count}})</text>
+    </view>
   </view>
 
-  <block wx:for="{{groups}}" wx:key="stage">
+  <view class="filter-panel">
+    <view class="seg-row">
+      <view class="seg seg-primary seg-group">
+        <view class="seg-item {{groupBy==='stage'?'active':''}}" data-value="stage" bindtap="setGroupBy">阶段</view>
+        <view class="seg-item {{groupBy==='category'?'active':''}}" data-value="category" bindtap="setGroupBy">分类</view>
+        <view class="seg-item {{groupBy==='space'?'active':''}}" data-value="space" bindtap="setGroupBy">空间</view>
+      </view>
+      <view class="seg seg-neutral seg-layout">
+        <view class="seg-item {{layout==='nested'?'active':''}}" data-value="nested" bindtap="setLayout">二级</view>
+        <view class="seg-item {{layout==='flat'?'active':''}}" data-value="flat" bindtap="setLayout">单级</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="total-slim" wx:if="{{totalAmountText}}">
+    <text class="total-label">合计</text>
+    <text class="total-amount">{{totalAmountText}}</text>
+  </view>
+
+  <view class="empty muted" wx:if="{{!groups.length}}">暂无支付项</view>
+
+  <block wx:for="{{groups}}" wx:key="key">
     <view class="card">
-      <view class="row-between" bindtap="toggle" data-stage="{{item.stage}}">
+      <view class="row-between {{layout==='nested' ? 'clickable' : ''}}" bindtap="toggle" data-key="{{item.key}}">
         <view class="stage-head">
           <view class="stage-title-row">
-            <text class="chevron {{item.open ? 'open' : ''}}">▶</text>
-            <text class="card-title" style="margin:0;">{{item.stage}}（{{item.items.length}}）</text>
+            <text class="chevron {{item.open ? 'open' : ''}}" wx:if="{{layout==='nested'}}">▶</text>
+            <image wx:if="{{item.iconPath}}" class="stage-icon-img" src="{{item.iconPath}}" mode="aspectFill" />
+            <text wx:elif="{{item.iconEmoji}}" class="stage-icon-emoji">{{item.iconEmoji}}</text>
+            <text class="card-title" style="margin:0;">{{item.key}}（{{item.count}}项）</text>
           </view>
-          <text class="stage-metrics muted">预算 {{item.budgetText}} · 实际 {{item.actualText}}</text>
+          <text class="stage-metrics muted">实际支付 {{item.paidText}} · 预算 {{item.budgetText}} · 预计要支付 {{item.projectedText}}</text>
+          <text class="stage-metrics muted">已支付 {{item.paidItemCount}}项 · {{item.paidText}}</text>
+          <text class="stage-metrics muted">待支付 {{item.pendingItemCount}}项 · {{item.pendingAmountText}}</text>
           <text class="stage-overspend {{item.overspendClass}}">{{item.overspendText}}</text>
         </view>
-        <text class="muted">{{item.open ? '收起' : '展开'}}</text>
       </view>
-      <view class="collapse {{item.open ? 'open' : ''}}">
+      <view class="collapse {{(layout==='flat' || item.open) ? 'open' : ''}}">
         <view class="collapse-inner">
           <view
             class="item"
@@ -31,11 +61,14 @@
           >
             <view class="item-main">
               <view class="title-row">
-                <text class="name">{{row.name}}</text>
+                <view class="name-wrap">
+                  <text class="name">{{row.name}}</text>
+                  <text class="badge-new" wx:if="{{row.showNewBadge}}">新增</text>
+                </view>
                 <text class="status">{{row.statusText}}</text>
               </view>
               <view class="date">{{row.dateText}}</view>
-              <view class="muted">预算 {{row.budgetText}}</view>
+              <view class="muted">预算 {{row.budgetText}}{{row.contractText ? ' → ' + row.contractText : ''}}</view>
             </view>
             <text class="muted">›</text>
           </view>

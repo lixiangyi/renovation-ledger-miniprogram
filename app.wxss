@@ -94,5 +94,5 @@ page {
 
 .health-within { color: #2e7d32; }
 .health-mild { color: #ef6c00; }
-.health-severe { color: #c62828; }
+.health-severe { color: #e31c23; }
 .health-flat { color: #666e68; }

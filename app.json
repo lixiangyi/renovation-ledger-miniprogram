@@ -9,7 +9,10 @@
     "pages/pending/pending",
     "pages/paid-gap/paid-gap",
     "pages/taxonomy/taxonomy",
-    "pages/import/import"
+    "pages/import/import",
+    "pages/trash/trash",
+    "pages/settings/settings",
+    "pages/search/search"
   ],
   "window": {
     "navigationBarTitleText": "装修记账",
@@ -26,19 +29,27 @@
     "list": [
       {
         "pagePath": "pages/overview/overview",
-        "text": "总览"
+        "text": "总览",
+        "iconPath": "assets/tab/overview.png",
+        "selectedIconPath": "assets/tab/overview-active.png"
       },
       {
         "pagePath": "pages/list/list",
-        "text": "清单"
+        "text": "清单",
+        "iconPath": "assets/tab/list.png",
+        "selectedIconPath": "assets/tab/list-active.png"
       },
       {
         "pagePath": "pages/stats/stats",
-        "text": "统计"
+        "text": "统计",
+        "iconPath": "assets/tab/stats.png",
+        "selectedIconPath": "assets/tab/stats-active.png"
       },
       {
         "pagePath": "pages/mine/mine",
-        "text": "我的"
+        "text": "我的",
+        "iconPath": "assets/tab/mine.png",
+        "selectedIconPath": "assets/tab/mine-active.png"
       }
     ]
   },

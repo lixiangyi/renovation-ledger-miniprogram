@@ -1,0 +1,50 @@
+<view class="page" style="background: {{theme.pageBg}};">
+  <view class="search-bar">
+    <input
+      class="search-input"
+      value="{{query}}"
+      placeholder="搜索预算项名称"
+      focus="{{true}}"
+      confirm-type="search"
+      bindinput="onInput"
+      bindconfirm="onSubmit"
+    />
+    <text class="search-clear" wx:if="{{query}}" bindtap="clearQuery">✕</text>
+  </view>
+
+  <block wx:if="{{!query}}">
+    <block wx:if="{{history.length}}">
+      <view class="history-head">
+        <text class="history-title">历史搜索</text>
+        <text class="history-clear" bindtap="onClearHistory">清空</text>
+      </view>
+      <view class="chips">
+        <view
+          class="chip"
+          wx:for="{{history}}"
+          wx:key="*this"
+          data-query="{{item}}"
+          bindtap="onSelectHistory"
+        >{{item}}</view>
+      </view>
+    </block>
+    <view class="empty" wx:else>暂无搜索历史</view>
+  </block>
+
+  <block wx:else>
+    <view class="empty" wx:if="{{!results.length}}">未找到相关预算项</view>
+    <view
+      class="result-card"
+      wx:for="{{results}}"
+      wx:key="id"
+      data-id="{{item.id}}"
+      bindtap="openItem"
+    >
+      <view class="result-main">
+        <text class="result-name">{{item.name}}</text>
+        <text class="result-meta" wx:if="{{item.metaText}}">{{item.metaText}}</text>
+      </view>
+      <text class="result-amount">{{item.amountText}}</text>
+    </view>
+  </block>
+</view>

@@ -10,6 +10,7 @@ const {
   effectiveCost,
   uid,
 } = require('../../utils/model')
+const { displayUnpaid, suggestUnpaidAmount } = require('../../utils/unpaid')
 const themeUtil = require('../../utils/theme')
 const {
   indexOfOrZero,
@@ -77,6 +78,10 @@ Page({
     const paid = (item.payments || [])
       .filter((p) => p.status === PaymentStatus.PAID)
       .reduce((s, p) => s + p.amount, 0)
+    const unpaidRowsSum = (item.payments || [])
+      .filter((p) => p.status === PaymentStatus.UNPAID)
+      .reduce((s, p) => s + p.amount, 0)
+    const unpaidSum = displayUnpaid(item.contractAmount, paid, unpaidRowsSum)
     this.setData({
       item,
       theme,
@@ -91,6 +96,7 @@ Page({
         contractText: item.contractAmount != null ? fenToYuan(item.contractAmount) : '未填',
         effectiveText: fenToYuan(effectiveCost(item)),
         paidText: fenToYuan(paid),
+        unpaidText: fenToYuan(unpaidSum),
         remark: item.remark || '无',
         payments: (item.payments || []).map((p) => ({
           id: p.id,
@@ -220,7 +226,22 @@ Page({
   },
 
   onEditStatus(e) {
-    this.setData({ editStatusIndex: Number(e.detail.value) })
+    const editStatusIndex = Number(e.detail.value)
+    const status = PAY_STATUS[editStatusIndex].value
+    const patch = { editStatusIndex }
+    if (status === PaymentStatus.UNPAID && !(this.data.editAmountYuan || '').trim()) {
+      const item = store.getItem(this.data.id)
+      if (item) {
+        const paidSumExcludingCurrent = (item.payments || [])
+          .filter((p) => p.id !== this.data.editPayId && p.status === PaymentStatus.PAID)
+          .reduce((s, p) => s + p.amount, 0)
+        const suggested = suggestUnpaidAmount(item.contractAmount, paidSumExcludingCurrent)
+        if (suggested > 0) {
+          patch.editAmountYuan = String(suggested / 100)
+        }
+      }
+    }
+    this.setData(patch)
   },
 
   onEditAmount(e) {

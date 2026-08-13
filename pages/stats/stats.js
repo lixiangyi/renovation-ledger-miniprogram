@@ -4,7 +4,7 @@ const { aggregate, resolveHealth } = require('../../utils/metrics')
 const themeUtil = require('../../utils/theme')
 
 const COLORS = ['#5C6BC0', '#26A69A', '#FFA726', '#EF5350', '#AB47BC', '#42A5F5', '#66BB6A', '#8D6E63']
-const LABEL_MIN = 5
+const LABEL_MIN = 1.5
 const LABEL_INSIDE_MIN = 12
 
 function shortName(raw) {
@@ -22,11 +22,19 @@ function luminance(hex) {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
 
+function displayLegend(legend, selectedIndex) {
+  if (selectedIndex < 0) return legend
+  const selected = legend.find((item) => item.index === selectedIndex)
+  if (!selected) return legend
+  return [selected].concat(legend.filter((item) => item.index !== selectedIndex))
+}
+
 Page({
   data: {
     groupBy: 'category',
     pieMetric: 'projected',
     legend: [],
+    displayLegend: [],
     rows: [],
     theme: {},
     totalText: '',
@@ -66,6 +74,7 @@ Page({
         percentText: percent.toFixed(1) + '%',
         amountText: fenToYuan(g[metricKey]),
         value: g[metricKey],
+        index: i,
         selected: i === selectedIndex,
         labelMode: percent >= LABEL_INSIDE_MIN ? 'inside'
           : (percent >= LABEL_MIN ? 'outside' : 'none'),
@@ -75,8 +84,8 @@ Page({
     const hasOutside = legend.some((l) => l.labelMode === 'outside')
     let tipText = '点击扇区或图例可高亮'
     if (hasTiny || hasOutside) {
-      tipText = (hasTiny ? `小于 ${LABEL_MIN}% 未标在图上；` : '')
-        + (hasOutside ? '过小扇区的关键字与百分比标在外侧；' : '')
+      tipText = (hasTiny ? `小于 ${LABEL_MIN}% 的只在图例查看；` : '')
+        + (hasOutside ? '较小扇区关键字与百分比标在外侧；' : '')
         + '点击可高亮图例'
     }
     const rows = groups.map((g) => {
@@ -97,6 +106,7 @@ Page({
       theme,
       cssVars: `--page-bg:${theme.pageBg};--primary:${theme.primary};`,
       legend,
+      displayLegend: displayLegend(legend, selectedIndex),
       rows,
       totalText: fenToYuan(total),
       tipText,
@@ -143,7 +153,7 @@ Page({
     const legend = (this.data.legend || []).map((item, i) =>
       Object.assign({}, item, { selected: i === selectedIndex }),
     )
-    this.setData({ selectedIndex, legend })
+    this.setData({ selectedIndex, legend, displayLegend: displayLegend(legend, selectedIndex) })
     const total = legend.reduce((s, l) => s + l.value, 0)
     this.drawPie(legend, total, selectedIndex)
   },
@@ -163,8 +173,8 @@ Page({
       ctx.clearRect(0, 0, width, height)
       const cx = width / 2
       const cy = height / 2
-      const r = Math.min(width, height) * 0.32
-      const inner = r * 0.55
+      const r = Math.min(width, height) * 0.40
+      const inner = r * 0.48
       let start = -Math.PI / 2
       const slices = legend.filter((l) => l.value > 0)
       if (!slices.length || total <= 0) {
@@ -232,10 +242,10 @@ Page({
         } else if (s.labelMode === 'outside') {
           const x1 = cx + cos * (r + 2)
           const y1 = cy + sin * (r + 2)
-          const x2 = cx + cos * (r + 18)
-          const y2 = cy + sin * (r + 18)
+          const x2 = cx + cos * (r + 26)
+          const y2 = cy + sin * (r + 26)
           const onRight = cos >= 0
-          const x3 = onRight ? x2 + 14 : x2 - 14
+          const x3 = onRight ? x2 + 16 : x2 - 16
           ctx.strokeStyle = s.color
           ctx.lineWidth = 1.5
           ctx.beginPath()
@@ -244,7 +254,7 @@ Page({
           ctx.lineTo(x3, y2)
           ctx.stroke()
           ctx.fillStyle = '#333'
-          ctx.font = 'bold 10px sans-serif'
+          ctx.font = 'bold 11px sans-serif'
           ctx.textAlign = onRight ? 'left' : 'right'
           ctx.textBaseline = 'middle'
           const label = s.shortKey ? `${s.shortKey} ${s.percentText}` : s.percentText

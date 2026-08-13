@@ -1,0 +1,47 @@
+.page {
+  min-height: 100vh;
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.empty {
+  margin-top: 120rpx;
+  text-align: center;
+  color: #999;
+  font-size: 28rpx;
+}
+
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.name {
+  font-size: 32rpx;
+  font-weight: 600;
+  margin-bottom: 8rpx;
+}
+
+.muted {
+  color: #999;
+  font-size: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.actions {
+  display: flex;
+  gap: 16rpx;
+}
+
+.btn-primary {
+  background: #2E7D32;
+  color: #fff;
+}
+
+.btn-ghost {
+  background: #fff;
+  color: #333;
+  border: 1rpx solid #ddd;
+}

@@ -2,12 +2,11 @@ const store = require('../../utils/store')
 const { fenToYuan } = require('../../utils/money')
 const {
   resolveHealth,
-  healthLabel,
   hintHealthClass,
-  percentHealthClass,
   classifyPaidBudgetGaps,
 } = require('../../utils/metrics')
-const { PaymentStatus, paymentTypeLabel } = require('../../utils/model')
+const { computeProjectedSpendPercent, projectedGapAmountText } = require('../../utils/projectedSpend')
+const { PaymentStatus, effectiveCost, deriveStatus, statusLabel } = require('../../utils/model')
 const themeUtil = require('../../utils/theme')
 const { getExpandState, setExpandState } = require('../../utils/overview-expand')
 
@@ -23,6 +22,16 @@ function overspendText(amount) {
   if (amount > 0) return '超支 ' + fenToYuan(amount)
   if (amount < 0) return '节余 ' + fenToYuan(-amount)
   return '与预算持平'
+}
+
+function budgetGapInfo(budgetAmount, actualAmount) {
+  const gap = (actualAmount || 0) - (budgetAmount || 0)
+  if (!budgetAmount || !gap) return { text: '', cls: '' }
+  const percent = Math.abs(gap) * 100 / budgetAmount
+  const percentText = Number(percent.toFixed(1)).toString() + '%'
+  return gap > 0
+    ? { text: `超支 ${percentText}`, cls: 'over' }
+    : { text: `节余 ${percentText}`, cls: 'surplus' }
 }
 
 function themeCssVars(theme) {
@@ -48,8 +57,6 @@ Page({
     cssVars: themeCssVars(DEFAULT_THEME),
     healthClass: '',
     projectedHealthClass: '',
-    budgetRateClass: '',
-    projectedRateClass: '',
     recent: [],
     overspendRows: [],
     surplusRows: [],
@@ -136,6 +143,29 @@ Page({
     this.refresh()
   },
 
+  startDeleteLedger(e) {
+    const id = e.currentTarget.dataset.id
+    const name = e.currentTarget.dataset.name || '账本'
+    if (!id) return
+    const that = this
+    wx.showModal({
+      title: '移入垃圾箱',
+      content: '将「' + name + '」移入垃圾箱。会先导出备份，之后可从垃圾箱恢复；永久删除前仍可找回。',
+      confirmText: '移入',
+      success(res) {
+        if (!res.confirm) return
+        try {
+          store.moveProjectToTrash(id)
+          that.setData({ drawerOpen: false })
+          that.refresh()
+          wx.showToast({ title: '已移入垃圾箱', icon: 'success' })
+        } catch (err) {
+          wx.showToast({ title: (err && err.message) || '删除失败', icon: 'none' })
+        }
+      },
+    })
+  },
+
   noop() {},
 
   refresh() {
@@ -157,40 +187,63 @@ Page({
       )
       const recent = []
       items.forEach((item) => {
+        const paidAmount = (item.payments || [])
+          .filter((p) => p.status === PaymentStatus.PAID)
+          .reduce((s, p) => s + p.amount, 0)
+        const scheduledUnpaid = (item.payments || [])
+          .filter((p) => p.status === PaymentStatus.UNPAID)
+          .reduce((s, p) => s + p.amount, 0)
+        const actualAmount = effectiveCost(item)
+        const unpaidAmount = Math.max(actualAmount - paidAmount, scheduledUnpaid, 0)
+        const statusText = statusLabel(deriveStatus(item))
         ;(item.payments || []).forEach((p) => {
           recent.push(Object.assign({}, p, {
             itemId: item.id,
             itemName: item.name,
+            category: item.category || item.stage || '未分类',
+            recordedDate: item.recordedDate || '',
+            isNewAddition: !!item.isNewAddition,
             budgetAmount: item.budgetAmount || 0,
+            actualAmount,
+            paidAmount,
+            unpaidAmount,
+            statusText,
           }))
         })
       })
       recent.sort((a, b) => (b.paidAtEpochMs || 0) - (a.paidAtEpochMs || 0))
       const recentRows = recent.slice(0, 5).map((p) => {
-        const statusText = p.status === PaymentStatus.PAID ? '已付' : '未付'
-        const typeText = paymentTypeLabel(p.type)
         const dateText = p.paidAtEpochMs
           ? new Date(p.paidAtEpochMs).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
           : ''
-        const meta = [typeText, statusText, p.createdBy || '', dateText].filter(Boolean).join(' · ')
+        const displayDate = p.recordedDate || dateText
+        const budgetText = fenToYuan(p.budgetAmount)
+        const actualText = fenToYuan(p.actualAmount)
+        const gap = budgetGapInfo(p.budgetAmount, p.actualAmount)
         return {
           id: p.id,
           itemId: p.itemId,
           title: p.itemName,
-          budgetText: fenToYuan(p.budgetAmount),
-          amountText: fenToYuan(p.amount),
-          payMeta: meta,
+          category: p.category,
+          dateText: displayDate,
+          isNewAddition: p.isNewAddition,
+          statusText: p.statusText,
+          statusClass: p.statusText === '已结清' ? 'settled' : 'pending',
+          amountLine: p.actualAmount !== p.budgetAmount
+            ? `${budgetText} → ${actualText}`
+            : budgetText,
+          amountGapText: gap.text,
+          amountGapClass: gap.cls,
+          paidText: fenToYuan(p.paidAmount),
+          unpaidText: fenToYuan(p.unpaidAmount),
         }
       })
 
-      const budgetRate = metrics.totalBudget > 0
-        ? Math.round((metrics.paidActual / metrics.totalBudget) * 100)
-        : 0
-      const projectedRate = metrics.totalBudget > 0
-        ? Math.round((metrics.projectedTotal / metrics.totalBudget) * 100)
-        : 0
+      const projected = computeProjectedSpendPercent(metrics.projectedTotal, metrics.totalBudget)
 
       const { overspend, surplus } = classifyPaidBudgetGaps(items)
+      const overspendGapTotal = overspend.reduce((s, r) => s + r.amount, 0)
+      const surplusGapTotal = surplus.reduce((s, r) => s + r.amount, 0)
 
       this.setData({
         projectName: project.name || '我家装修',
@@ -200,8 +253,6 @@ Page({
         cssVars: themeCssVars(safeTheme),
         healthClass: hintHealthClass(metrics.currentOverspend, currentHealth),
         projectedHealthClass: hintHealthClass(metrics.projectedOverspend, projectedHealth),
-        budgetRateClass: percentHealthClass(budgetRate, currentHealth),
-        projectedRateClass: percentHealthClass(projectedRate, projectedHealth),
         metrics: {
           totalBudgetText: fenToYuan(metrics.totalBudget),
           paidText: fenToYuan(metrics.paidActual),
@@ -210,12 +261,10 @@ Page({
           toBuyText: fenToYuan(metrics.toBuyAmount),
           projectedText: fenToYuan(metrics.projectedTotal),
           currentHint: overspendText(metrics.currentOverspend),
-          projectedHint: overspendText(metrics.projectedOverspend),
-          projectedHealthLabel: healthLabel(projectedHealth),
-          budgetRate,
-          projectedRate,
-          progressBudget: Math.min(100, Math.max(0, budgetRate)),
-          progressProjected: Math.min(100, Math.max(0, projectedRate)),
+          overspendGapText: fenToYuan(overspendGapTotal),
+          surplusGapText: fenToYuan(surplusGapTotal),
+          projectedPercentLabel: projected.percent !== null ? projected.label : '',
+          projectedGapText: projected.gap !== 0 ? projectedGapAmountText(projected.gap) : '',
         },
         recent: recentRows,
         overspendRows: overspend,
@@ -277,6 +326,10 @@ Page({
   openItem(e) {
     const id = e.currentTarget.dataset.id
     if (id) wx.navigateTo({ url: `/pages/detail/detail?id=${id}` })
+  },
+
+  goSearch() {
+    wx.navigateTo({ url: '/pages/search/search' })
   },
 
   goEntry() {

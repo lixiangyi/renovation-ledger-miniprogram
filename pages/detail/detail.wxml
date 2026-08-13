@@ -7,6 +7,7 @@
       <view><text class="muted">合同</text><view>{{view.contractText}}</view></view>
       <view><text class="muted">预计</text><view>{{view.effectiveText}}</view></view>
       <view><text class="muted">已付</text><view>{{view.paidText}}</view></view>
+      <view><text class="muted">未付合计</text><view>{{view.unpaidText}}</view></view>
     </view>
     <view class="muted" style="margin-top: 12rpx;">备注：{{view.remark}}</view>
   </view>

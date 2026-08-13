@@ -20,11 +20,15 @@
   <view class="hint muted">维护「{{kindLabel}}」选项，录入与编辑下拉会同步使用。</view>
 
   <view class="card">
-    <view class="row" wx:for="{{options}}" wx:key="*this">
-      <text class="name">{{item}}</text>
+    <view class="row" wx:for="{{options}}" wx:key="value">
+      <view class="row-icon">
+        <image wx:if="{{item.path}}" class="row-icon-img" src="{{item.path}}" mode="aspectFill" />
+        <text wx:elif="{{item.emoji}}" class="row-icon-emoji">{{item.emoji}}</text>
+      </view>
+      <text class="name">{{item.value}}</text>
       <view class="ops">
-        <text class="link" data-value="{{item}}" bindtap="onRename">改名</text>
-        <text class="link danger" data-value="{{item}}" bindtap="onRemove">删除</text>
+        <text class="link" data-value="{{item.value}}" bindtap="onEdit">编辑</text>
+        <text class="link danger" data-value="{{item.value}}" bindtap="onRemove">删除</text>
       </view>
     </view>
     <view class="muted" wx:if="{{!options.length}}">暂无选项</view>
@@ -33,5 +37,48 @@
   <view class="actions">
     <button class="btn-primary" bindtap="onAdd">新增</button>
     <button class="btn-ghost" bindtap="onReset">恢复默认</button>
+  </view>
+
+  <view class="editor-mask" wx:if="{{showEditor}}" catchtap="onCancelEditor">
+    <view class="editor-panel" catchtap="noop">
+      <text class="editor-title">{{editMode === 'add' ? '新增' : '修改'}}{{kindLabel}}</text>
+      <input
+        class="editor-input"
+        value="{{editName}}"
+        placeholder="输入名称"
+        bindinput="onEditNameInput"
+      />
+      <text class="editor-label muted">图标（可选）</text>
+      <scroll-view class="icon-scroll" scroll-x>
+        <view class="icon-row">
+          <view
+            class="icon-chip {{!editIconKey && !editIconPath ? 'selected' : ''}}"
+            bindtap="onClearIcon"
+          >
+            <text class="icon-chip-text">无</text>
+          </view>
+          <view
+            class="icon-chip {{item.selected ? 'selected' : ''}}"
+            wx:for="{{presetIcons}}"
+            wx:key="key"
+            data-key="{{item.key}}"
+            bindtap="onPickPresetIcon"
+          >
+            <text class="icon-chip-emoji">{{item.emoji}}</text>
+          </view>
+          <view
+            class="icon-chip {{editIconPath ? 'selected' : ''}}"
+            bindtap="onPickImage"
+          >
+            <image wx:if="{{editIconPath}}" class="icon-chip-img" src="{{editIconPath}}" mode="aspectFill" />
+            <text wx:else class="icon-chip-text">相册</text>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="editor-actions">
+        <button class="btn-ghost editor-btn" bindtap="onCancelEditor">取消</button>
+        <button class="btn-primary editor-btn" bindtap="onConfirmEditor">保存</button>
+      </view>
+    </view>
   </view>
 </view>

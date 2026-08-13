@@ -1,14 +1,36 @@
 .page { min-height: 100vh; padding-top: 16rpx; }
 .filters { padding: 0 24rpx 8rpx; }
 .total-card {
-  background: var(--primary-container, #E8F5E9);
+  margin-left: 24rpx;
+  margin-right: 24rpx;
+  margin-bottom: 8rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 16rpx;
+  border: 2rpx solid transparent;
 }
+.total-card.overspend {
+  background: rgba(227, 28, 35, 0.10);
+  border-color: rgba(227, 28, 35, 0.35);
+}
+.total-card.surplus {
+  background: rgba(46, 125, 50, 0.10);
+  border-color: rgba(46, 125, 50, 0.35);
+}
+.total-label {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #666e68;
+}
+.total-card.overspend .total-label { color: #e31c23; }
+.total-card.surplus .total-label { color: #2e7d32; }
 .total-amt {
-  font-size: 40rpx;
+  margin-top: 8rpx;
+  font-size: 36rpx;
   font-weight: 700;
-  margin-top: 6rpx;
-  color: var(--primary, #2E7D32);
+  line-height: 1.2;
 }
+.amt-overspend { color: #e31c23; }
+.amt-surplus { color: #2e7d32; }
 .gap-card { display: block; }
 .gap-top {
   display: flex;
@@ -26,7 +48,6 @@
 }
 .gap-amt {
   font-weight: 600;
-  color: var(--primary, #2E7D32);
   flex-shrink: 0;
 }
 .detail-line { margin-top: 4rpx; font-size: 24rpx; }

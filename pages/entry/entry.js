@@ -5,6 +5,7 @@ const {
   PaymentType,
   PaymentStatus,
 } = require('../../utils/model')
+const { suggestUnpaidAmount } = require('../../utils/unpaid')
 const themeUtil = require('../../utils/theme')
 const {
   indexOfOrZero,
@@ -115,7 +116,30 @@ Page({
     this.setData({ payTypeIndex: Number(e.detail.value) })
   },
   onPayPaid(e) {
-    this.setData({ payPaid: !!e.detail.value })
+    const payPaid = !!e.detail.value
+    const patch = { payPaid }
+    if (!payPaid && !(this.data.payAmountYuan || '').trim()) {
+      let contractAmount = null
+      let paidSum = 0
+      if (this.data.mode === 'payment') {
+        const item = store.getItem(this.data.itemId)
+        if (item) {
+          contractAmount = item.contractAmount
+          paidSum = (item.payments || [])
+            .filter((p) => p.status === PaymentStatus.PAID)
+            .reduce((s, p) => s + p.amount, 0)
+        }
+      } else {
+        contractAmount = (this.data.contractYuan || '').trim()
+          ? yuanToFen(this.data.contractYuan)
+          : null
+      }
+      const suggested = suggestUnpaidAmount(contractAmount, paidSum)
+      if (suggested > 0) {
+        patch.payAmountYuan = String(suggested / 100)
+      }
+    }
+    this.setData(patch)
   },
 
   save() {

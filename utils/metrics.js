@@ -80,10 +80,10 @@ function healthTheme(level, enabled) {
       }
     case HealthLevel.SEVERE_OVER:
       return {
-        pageBg: '#FFEBEE',
-        primary: '#C62828',
-        primaryContainer: '#FFCDD2',
-        tabBg: '#FFE0E3',
+        pageBg: '#FFF0F0',
+        primary: '#E31C23',
+        primaryContainer: '#FFC9C9',
+        tabBg: '#FFE4E4',
         levelClass: 'health-severe',
       }
     default:

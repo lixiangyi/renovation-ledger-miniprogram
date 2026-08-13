@@ -1,14 +1,19 @@
 const { uid, PaymentType, PaymentStatus } = require('./model')
 const { defaultTaxonomy, normalizeTaxonomy } = require('./taxonomy')
+const { pushHistory } = require('./search')
 
 const STORAGE_KEY = 'renovation_ledger_v1'
 
 function defaultPrefs() {
   return {
     nickname: '我',
+    avatarPath: '',
     healthColorEnabled: true,
     mildOverMaxPercent: 15,
     taxonomy: defaultTaxonomy(),
+    paymentListGroupBy: 'stage',
+    paymentListLayout: 'nested',
+    searchHistory: [],
   }
 }
 
@@ -205,6 +210,16 @@ function setPrefs(partial) {
   return viewOf(raw)
 }
 
+function addSearchHistory(query) {
+  const raw = ensureRaw()
+  const existing = Array.isArray(raw.prefs.searchHistory) ? raw.prefs.searchHistory : []
+  return setPrefs({ searchHistory: pushHistory(existing, query) })
+}
+
+function clearSearchHistory() {
+  return setPrefs({ searchHistory: [] })
+}
+
 function getTaxonomy() {
   return normalizeTaxonomy(getState().prefs.taxonomy)
 }
@@ -216,17 +231,21 @@ function setTaxonomy(partial) {
   })
 }
 
-function addTaxonomyOption(kind, value) {
+function addTaxonomyOption(kind, value, icon) {
   const trimmed = String(value || '').trim()
   if (!trimmed) return getState()
   const taxonomy = getTaxonomy()
   const list = (taxonomy[kind] || []).slice()
   if (list.indexOf(trimmed) < 0) list.push(trimmed)
   taxonomy[kind] = list
+  if (icon) {
+    taxonomy.icons = taxonomy.icons || { stages: {}, categories: {}, spaces: {} }
+    taxonomy.icons[kind] = Object.assign({}, taxonomy.icons[kind], { [trimmed]: icon })
+  }
   return setPrefs({ taxonomy })
 }
 
-function renameTaxonomyOption(kind, oldValue, newValue) {
+function renameTaxonomyOption(kind, oldValue, newValue, icon) {
   const trimmed = String(newValue || '').trim()
   if (!trimmed) return getState()
   const taxonomy = getTaxonomy()
@@ -239,12 +258,30 @@ function renameTaxonomyOption(kind, oldValue, newValue) {
     list[index] = trimmed
   }
   taxonomy[kind] = list
+
+  taxonomy.icons = taxonomy.icons || { stages: {}, categories: {}, spaces: {} }
+  const iconMap = Object.assign({}, taxonomy.icons[kind])
+  const carried = iconMap[oldValue]
+  if (trimmed !== oldValue) delete iconMap[oldValue]
+  const finalIcon = icon !== undefined ? icon : carried
+  if (finalIcon) {
+    iconMap[trimmed] = finalIcon
+  } else {
+    delete iconMap[trimmed]
+  }
+  taxonomy.icons[kind] = iconMap
+
   return setPrefs({ taxonomy })
 }
 
 function removeTaxonomyOption(kind, value) {
   const taxonomy = getTaxonomy()
   taxonomy[kind] = (taxonomy[kind] || []).filter((v) => v !== value)
+  if (taxonomy.icons && taxonomy.icons[kind]) {
+    const iconMap = Object.assign({}, taxonomy.icons[kind])
+    delete iconMap[value]
+    taxonomy.icons[kind] = iconMap
+  }
   return setPrefs({ taxonomy })
 }
 
@@ -252,7 +289,31 @@ function resetTaxonomyKind(kind) {
   const defaults = defaultTaxonomy()
   const taxonomy = getTaxonomy()
   taxonomy[kind] = defaults[kind].slice()
+  taxonomy.icons = taxonomy.icons || { stages: {}, categories: {}, spaces: {} }
+  taxonomy.icons[kind] = {}
   return setPrefs({ taxonomy })
+}
+
+/** 单独设置/清除某个标签值的图标（不改名）。icon 为空/undefined 即清除。 */
+function setTaxonomyIcon(kind, value, icon) {
+  const trimmed = String(value || '').trim()
+  if (!trimmed) return getState()
+  const taxonomy = getTaxonomy()
+  taxonomy.icons = taxonomy.icons || { stages: {}, categories: {}, spaces: {} }
+  const iconMap = Object.assign({}, taxonomy.icons[kind])
+  if (icon) {
+    iconMap[trimmed] = icon
+  } else {
+    delete iconMap[trimmed]
+  }
+  taxonomy.icons[kind] = iconMap
+  return setPrefs({ taxonomy })
+}
+
+/** 按 kind + value 取图标引用（{iconKey}|{iconPath}|null）。 */
+function getTaxonomyIcon(kind, value) {
+  const taxonomy = getTaxonomy()
+  return (taxonomy.icons && taxonomy.icons[kind] && taxonomy.icons[kind][value]) || null
 }
 
 function setProject(partial) {
@@ -431,6 +492,88 @@ function exportCsv(state) {
   return lines.join('\n')
 }
 
+function snapshotProjectForTrash(projectId) {
+  const raw = ensureRaw()
+  const project = raw.projects.find((p) => p.id === projectId)
+  if (!project) throw new Error('账本不存在')
+  const items = raw.items.filter((i) => i.projectId === projectId)
+  const payments = []
+  items.forEach((item) => {
+    ;(item.payments || []).forEach((p) => payments.push(Object.assign({}, p)))
+  })
+  const itemsBare = items.map((item) => {
+    const copy = Object.assign({}, item)
+    copy.payments = []
+    return copy
+  })
+  return { project: Object.assign({}, project), items: itemsBare, payments }
+}
+
+function moveProjectToTrash(projectId) {
+  const trashCsv = require('./trashCsv')
+  const trashStore = require('./trashStore')
+  const snapshot = snapshotProjectForTrash(projectId)
+  const csvText = trashCsv.encode(snapshot)
+  trashStore.writeTrash(
+    projectId,
+    snapshot.project.name,
+    snapshot.items.length,
+    csvText,
+  )
+  const raw = ensureRaw()
+  raw.projects = raw.projects.filter((p) => p.id !== projectId)
+  raw.items = raw.items.filter((i) => i.projectId !== projectId)
+  if (!raw.projects.length) {
+    writeRaw(raw)
+    return createProject('新账本')
+  }
+  if (raw.currentProjectId === projectId || !raw.projects.some((p) => p.id === raw.currentProjectId)) {
+    raw.currentProjectId = raw.projects[0].id
+  }
+  writeRaw(raw)
+  return viewOf(raw)
+}
+
+function restoreFromTrash(entryId) {
+  const trashCsv = require('./trashCsv')
+  const trashStore = require('./trashStore')
+  const csvText = trashStore.readCsv(entryId)
+  if (!csvText) throw new Error('垃圾箱备份文件不存在或已损坏')
+  const snapshot = trashCsv.decode(csvText)
+  if (!snapshot || !snapshot.project) throw new Error('垃圾箱备份无法解析')
+  const raw = ensureRaw()
+  let project = Object.assign({}, snapshot.project)
+  let items = (snapshot.items || []).map((i) => Object.assign({}, i, { payments: [] }))
+  const payments = snapshot.payments || []
+  if (raw.projects.some((p) => p.id === project.id)) {
+    const newId = uid('proj')
+    project.id = newId
+    items = items.map((i) => Object.assign({}, i, { projectId: newId }))
+  }
+  const paymentsByItem = {}
+  payments.forEach((p) => {
+    if (!paymentsByItem[p.budgetItemId]) paymentsByItem[p.budgetItemId] = []
+    paymentsByItem[p.budgetItemId].push(Object.assign({}, p))
+  })
+  items = items.map((item) => Object.assign({}, item, {
+    payments: paymentsByItem[item.id] || [],
+  }))
+  raw.projects.push(project)
+  items.forEach((item) => raw.items.unshift(item))
+  raw.currentProjectId = project.id
+  writeRaw(raw)
+  trashStore.removeEntry(entryId)
+  return viewOf(raw)
+}
+
+function purgeTrashEntry(entryId) {
+  require('./trashStore').removeEntry(entryId)
+}
+
+function listTrash() {
+  return require('./trashStore').listEntries()
+}
+
 module.exports = {
   STORAGE_KEY,
   ensureInitialized,
@@ -449,11 +592,19 @@ module.exports = {
   resetSample,
   clearAllItems,
   exportCsv,
+  moveProjectToTrash,
+  restoreFromTrash,
+  purgeTrashEntry,
+  listTrash,
   write,
+  addSearchHistory,
+  clearSearchHistory,
   getTaxonomy,
   setTaxonomy,
   addTaxonomyOption,
   renameTaxonomyOption,
   removeTaxonomyOption,
   resetTaxonomyKind,
+  setTaxonomyIcon,
+  getTaxonomyIcon,
 }

@@ -8,7 +8,10 @@
       <text class="menu-icon">☰</text>
       <text class="title">总览</text>
     </view>
-    <text class="muted project-chip" bindtap="startRenameCurrent">{{projectName}}</text>
+    <view class="header-right">
+      <text class="search-icon" bindtap="goSearch">🔍</text>
+      <text class="muted project-chip" bindtap="startRenameCurrent">{{projectName}}</text>
+    </view>
   </view>
 
   <view class="drawer-mask" wx:if="{{drawerOpen}}" bindtap="closeDrawer"></view>
@@ -26,6 +29,12 @@
         data-name="{{item.name}}"
         catchtap="startRenameLedger"
       >改名</text>
+      <text
+        class="drawer-item-edit"
+        data-id="{{item.id}}"
+        data-name="{{item.name}}"
+        catchtap="startDeleteLedger"
+      >删除</text>
     </view>
     <view class="drawer-create" bindtap="startCreateLedger">+ 新建账本</view>
   </view>
@@ -55,18 +64,29 @@
   <view class="card">
     <view class="muted">总预算</view>
     <view class="amount">{{metrics.totalBudgetText}}</view>
+    <view class="summary-divider"></view>
+    <view class="row-between projected-head">
+      <view class="muted">预计花费</view>
+      <text class="tag {{projectedHealthClass}}" wx:if="{{metrics.projectedPercentLabel}}">{{metrics.projectedPercentLabel}}</text>
+    </view>
+    <view class="amount sm">{{metrics.projectedText}}</view>
+    <view class="hint {{projectedHealthClass}}" wx:if="{{metrics.projectedGapText}}">{{metrics.projectedGapText}}</view>
   </view>
 
   <view class="grid">
     <view class="card half" bindtap="togglePaid">
       <view class="muted">已实付 {{paidExpanded ? '▴' : '▾'}}</view>
       <view class="amount sm">{{metrics.paidText}}</view>
-      <view class="hint {{healthClass}}">{{metrics.currentHint}}</view>
+      <view class="hint-lines">
+        <view class="amt-overspend tiny-strong">超支 {{metrics.overspendGapText}}</view>
+        <view class="amt-surplus tiny-strong">节余 {{metrics.surplusGapText}}</view>
+      </view>
     </view>
     <view class="card half" bindtap="togglePending">
       <view class="muted">待花费 {{pendingExpanded ? '▴' : '▾'}}</view>
       <view class="amount sm">{{metrics.pendingText}}</view>
-      <view class="muted tiny">尾款 {{metrics.unpaidFinalText}} · 待购 {{metrics.toBuyText}}</view>
+      <view class="muted tiny">尾款 {{metrics.unpaidFinalText}}</view>
+      <view class="muted tiny">待购 {{metrics.toBuyText}}</view>
     </view>
   </view>
 
@@ -75,11 +95,23 @@
       <view class="tab {{paidTab===0?'active':''}}" data-tab="0" bindtap="setPaidTab">超支项（{{overspendRows.length}}）</view>
       <view class="tab {{paidTab===1?'active':''}}" data-tab="1" bindtap="setPaidTab">节余项（{{surplusRows.length}}）</view>
     </view>
+    <view class="totals-strip" wx:if="{{paidTab===0}}">
+      <view class="total-quiet">
+        <view class="total-quiet-label">超支合计</view>
+        <view class="total-quiet-amt amt-overspend">{{metrics.overspendGapText}}</view>
+      </view>
+    </view>
+    <view class="totals-strip" wx:else>
+      <view class="total-quiet">
+        <view class="total-quiet-label">节余合计</view>
+        <view class="total-quiet-amt amt-surplus">{{metrics.surplusGapText}}</view>
+      </view>
+    </view>
     <block wx:if="{{paidTab===0}}">
       <view class="muted" wx:if="{{!overspendRows.length}}">暂无单项超支（已付未超预算）</view>
       <view class="row-line" wx:for="{{overspendPreview}}" wx:key="id" data-id="{{item.id}}" bindtap="openItem">
         <text class="name">{{item.name}}</text>
-        <text>{{item.amountText}}</text>
+        <text class="amt-overspend">{{item.amountText}}</text>
       </view>
       <view class="muted" wx:if="{{overspendMore}}">…还有 {{overspendMore}} 项</view>
     </block>
@@ -87,7 +119,7 @@
       <view class="muted" wx:if="{{!surplusRows.length}}">暂无单项节余（已结清且未花满预算）</view>
       <view class="row-line" wx:for="{{surplusPreview}}" wx:key="id" data-id="{{item.id}}" bindtap="openItem">
         <text class="name">{{item.name}}</text>
-        <text>{{item.amountText}}</text>
+        <text class="amt-surplus">{{item.amountText}}</text>
       </view>
       <view class="muted" wx:if="{{surplusMore}}">…还有 {{surplusMore}} 项</view>
     </block>
@@ -102,28 +134,6 @@
     <view class="link" bindtap="goPending" data-tab="{{pendingTab}}">查看全部明细 ›</view>
   </view>
 
-  <view class="card">
-    <view class="row-between">
-      <view class="muted">预计花费</view>
-      <text class="tag {{projectedHealthClass}}">{{metrics.projectedHealthLabel}}</text>
-    </view>
-    <view class="amount">{{metrics.projectedText}}</view>
-    <view class="hint {{projectedHealthClass}}">{{metrics.projectedHint}}</view>
-  </view>
-
-  <view class="card">
-    <view class="prog-row">
-      <text>预算执行</text>
-      <text class="{{budgetRateClass || 'muted'}}">{{metrics.budgetRate}}%</text>
-    </view>
-    <progress percent="{{metrics.progressBudget}}" stroke-width="6" activeColor="{{theme.primary}}" backgroundColor="#e0e0e0" />
-    <view class="prog-row" style="margin-top: 20rpx;">
-      <text>预计执行</text>
-      <text class="{{projectedRateClass || 'muted'}}">{{metrics.projectedRate}}%</text>
-    </view>
-    <progress percent="{{metrics.progressProjected}}" stroke-width="6" activeColor="{{theme.primary}}" backgroundColor="#e0e0e0" />
-  </view>
-
   <view class="card" wx:if="{{recent.length}}">
     <view class="card-title">最近记账</view>
     <view
@@ -133,25 +143,29 @@
       data-id="{{item.itemId}}"
       bindtap="openItem"
     >
-      <view class="recent-row">
-        <view class="recent-main">
-          <text class="tiny muted">预算项</text>
-          <text class="name">{{item.title}}</text>
+      <view class="recent-head">
+        <view class="recent-title-wrap">
+          <text class="recent-title">{{item.title}}</text>
+          <text class="recent-new" wx:if="{{item.isNewAddition}}">新增</text>
         </view>
-        <view class="recent-amt">
-          <text class="tiny muted">预算</text>
-          <text>{{item.budgetText}}</text>
-        </view>
+        <text class="recent-status {{item.statusClass}}">{{item.statusText}}</text>
       </view>
+      <view class="recent-sub" wx:if="{{item.dateText}}">{{item.dateText}}</view>
+      <view class="recent-sub">分类 {{item.category}}</view>
       <view class="recent-divider"></view>
-      <view class="recent-row">
-        <view class="recent-main">
-          <text class="tiny muted">实际付款</text>
-          <text class="muted">{{item.payMeta}}</text>
+      <view class="recent-budget">
+        <text class="recent-label">预算金额</text>
+        <text class="recent-budget-amount">{{item.amountLine}}</text>
+        <text class="recent-gap {{item.amountGapClass}}" wx:if="{{item.amountGapText}}">{{item.amountGapText}}</text>
+      </view>
+      <view class="recent-footer">
+        <view>
+          <text class="recent-label">已付</text>
+          <text class="recent-paid">{{item.paidText}}</text>
         </view>
-        <view class="recent-amt">
-          <text class="tiny muted">实付</text>
-          <text class="paid">{{item.amountText}}</text>
+        <view class="recent-unpaid">
+          <text class="recent-label">未付</text>
+          <text class="recent-unpaid-amount">{{item.unpaidText}}</text>
         </view>
       </view>
     </view>

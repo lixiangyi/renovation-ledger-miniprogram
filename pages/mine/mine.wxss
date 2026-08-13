@@ -1,4 +1,35 @@
 .page { min-height: 100vh; padding-top: 16rpx; }
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+}
+.avatar-sm {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 48rpx;
+  background: #c8e6c9;
+  flex-shrink: 0;
+}
+.avatar-sm.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2e7d32;
+  font-weight: 600;
+}
+.profile-meta { flex: 1; min-width: 0; }
+.nickname { font-size: 32rpx; font-weight: 600; }
+.gear { font-size: 36rpx; color: #888; }
+.ledger-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12rpx 0;
+  border-bottom: 1rpx solid #eee;
+}
+.ledger-name { flex: 1; }
+.ledger-del { color: #c62828; font-size: 26rpx; padding: 8rpx; }
 .field {
   display: flex;
   align-items: center;
@@ -38,6 +69,12 @@
   margin-right: 4rpx;
 }
 .switch-copy { flex: 1; padding-right: 16rpx; }
+.mild-row { margin-top: 16rpx; }
+.mild-value { font-weight: 600; }
+.spaced { margin-top: 16rpx; }
+.footer { text-align: center; margin: 24rpx 0 8rpx; }
+.err { color: #c62828; }
+
 .no-margin { margin: 0; }
 .mild-row { margin-top: 20rpx; }
 .mild-value { font-weight: 600; }

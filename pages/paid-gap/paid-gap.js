@@ -2,6 +2,14 @@ const { fenToYuan } = require('../../utils/money')
 const { classifyPaidBudgetGaps } = require('../../utils/metrics')
 const themeUtil = require('../../utils/theme')
 
+function sumAmount(rows) {
+  return rows.reduce((s, r) => s + (r.amount || 0), 0)
+}
+
+function sumField(rows, key) {
+  return rows.reduce((s, r) => s + (r[key] || 0), 0)
+}
+
 Page({
   data: {
     tab: 'overspend',
@@ -9,9 +17,11 @@ Page({
     overspendCount: 0,
     surplusCount: 0,
     emptyHint: '',
-    showTotal: false,
-    gapTotalText: '',
-    budgetPaidTotalText: '',
+    overspendTotalText: '',
+    surplusTotalText: '',
+    overspendDetailText: '',
+    surplusDetailText: '',
+    amountToneClass: 'amt-overspend',
     theme: {},
   },
 
@@ -44,26 +54,21 @@ Page({
         budgetPaidText: '预算 ' + r.budgetText + '  ·  实付 ' + r.paidText,
       }
     })
-    const showTotal = !isSurplus && overspend.length > 0
-    let gapTotalText = ''
-    let budgetPaidTotalText = ''
-    if (showTotal) {
-      const gapTotal = overspend.reduce((s, r) => s + r.amount, 0)
-      const budgetTotal = overspend.reduce((s, r) => s + (r.budgetAmount || 0), 0)
-      const paidTotal = overspend.reduce((s, r) => s + (r.paidAmount || 0), 0)
-      gapTotalText = fenToYuan(gapTotal)
-      budgetPaidTotalText = '预算合计 ' + fenToYuan(budgetTotal)
-        + '  ·  实付合计 ' + fenToYuan(paidTotal)
-    }
+    const overspendBudget = sumField(overspend, 'budgetAmount')
+    const overspendPaid = sumField(overspend, 'paidAmount')
+    const surplusBudget = sumField(surplus, 'budgetAmount')
+    const surplusPaid = sumField(surplus, 'paidAmount')
     this.setData({
       theme,
       cssVars: `--page-bg:${theme.pageBg};--primary:${theme.primary};--primary-container:${theme.primaryContainer || theme.pageBg};`,
       overspendCount: overspend.length,
       surplusCount: surplus.length,
       rows,
-      showTotal,
-      gapTotalText,
-      budgetPaidTotalText,
+      overspendTotalText: fenToYuan(sumAmount(overspend)),
+      surplusTotalText: fenToYuan(sumAmount(surplus)),
+      overspendDetailText: '预算 ' + fenToYuan(overspendBudget) + ' · 实付 ' + fenToYuan(overspendPaid),
+      surplusDetailText: '预算 ' + fenToYuan(surplusBudget) + ' · 实付 ' + fenToYuan(surplusPaid),
+      amountToneClass: isSurplus ? 'amt-surplus' : 'amt-overspend',
       emptyHint: isSurplus
         ? '暂无单项节余（已结清且未花满预算）'
         : '暂无单项超支（已付未超预算）',

@@ -12,8 +12,10 @@ const DEFAULT_THEME = {
 Page({
   data: {
     nickname: '',
+    avatarPath: '',
     projectName: '',
     members: '',
+    projects: [],
     healthColorEnabled: true,
     mildOverMaxPercent: 15,
     theme: DEFAULT_THEME,
@@ -35,8 +37,10 @@ Page({
           + ';--primary:' + safeTheme.primary
           + ';--primary-container:' + safeTheme.primaryContainer + ';',
         nickname: (state.prefs && state.prefs.nickname) || '我',
+        avatarPath: (state.prefs && state.prefs.avatarPath) || '',
         projectName: (state.project && state.project.name) || '我家装修',
         members: ((state.project && state.project.memberNames) || []).join('、'),
+        projects: state.projects || [],
         healthColorEnabled: !!(state.prefs && state.prefs.healthColorEnabled),
         mildOverMaxPercent: (state.prefs && state.prefs.mildOverMaxPercent) || 15,
         loadError: '',
@@ -50,39 +54,34 @@ Page({
     }
   },
 
-  onNicknameInput(e) {
-    this.setData({ nickname: e.detail.value })
+  openSettings() {
+    wx.navigateTo({ url: '/pages/settings/settings' })
   },
 
-  onNicknameBlur(e) {
-    const nickname = (e.detail.value || '').trim() || '我'
-    const state = store.getState()
-    const old = state.prefs.nickname
-    store.setPrefs({ nickname })
-    const names = (state.project.memberNames || []).map((n) => (n === old ? nickname : n))
-    if (names.indexOf(nickname) < 0) names[0] = nickname
-    const uniq = []
-    names.forEach((n) => {
-      if (uniq.indexOf(n) < 0) uniq.push(n)
+  openTrash() {
+    wx.navigateTo({ url: '/pages/trash/trash' })
+  },
+
+  deleteLedger(e) {
+    const id = e.currentTarget.dataset.id
+    const name = e.currentTarget.dataset.name || '账本'
+    if (!id) return
+    const that = this
+    wx.showModal({
+      title: '移入垃圾箱',
+      content: '将「' + name + '」移入垃圾箱。会先导出备份，之后可从垃圾箱恢复；永久删除前仍可找回。',
+      confirmText: '移入',
+      success(res) {
+        if (!res.confirm) return
+        try {
+          store.moveProjectToTrash(id)
+          that.refresh()
+          wx.showToast({ title: '已移入垃圾箱', icon: 'success' })
+        } catch (err) {
+          wx.showToast({ title: (err && err.message) || '删除失败', icon: 'none' })
+        }
+      },
     })
-    store.setProject({ memberNames: uniq })
-    this.refresh()
-  },
-
-  onProjectInput(e) {
-    this.setData({ projectName: e.detail.value })
-  },
-
-  onProjectBlur(e) {
-    const name = (e.detail.value || '').trim() || '我家装修'
-    store.setProject({ name })
-    this.refresh()
-  },
-
-  clearField(e) {
-    const field = e.currentTarget.dataset.field
-    if (field === 'nickname') this.setData({ nickname: '' })
-    if (field === 'projectName') this.setData({ projectName: '' })
   },
 
   onHealthSwitch(e) {

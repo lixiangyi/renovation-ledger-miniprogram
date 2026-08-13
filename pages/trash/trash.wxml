@@ -1,0 +1,11 @@
+<view class="page" style="background: {{theme.pageBg}};">
+  <view class="empty" wx:if="{{empty}}">暂无已删除账本</view>
+  <view class="card" wx:for="{{entries}}" wx:key="id">
+    <view class="name">{{item.name}}</view>
+    <view class="muted">删除于 {{item.deletedAtText}} · {{item.itemCount}} 项</view>
+    <view class="actions">
+      <button class="btn-primary" size="mini" data-id="{{item.id}}" bindtap="restore">恢复</button>
+      <button class="btn-ghost" size="mini" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="purge">永久删除</button>
+    </view>
+  </view>
+</view>

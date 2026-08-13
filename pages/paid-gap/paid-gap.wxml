@@ -4,14 +4,20 @@
     <view class="chip {{tab==='surplus'?'active':''}}" data-tab="surplus" bindtap="setTab">节余项（{{surplusCount}}）</view>
   </view>
 
-  <view class="card" wx:if="{{!rows.length}}">
-    <text class="muted">{{emptyHint}}</text>
+  <view class="card total-card overspend" wx:if="{{tab==='overspend'}}">
+    <view class="total-label">超支合计</view>
+    <view class="total-amt amt-overspend">{{overspendTotalText}}</view>
+    <view class="muted detail-line">{{overspendDetailText}}</view>
   </view>
 
-  <view class="card total-card" wx:if="{{showTotal}}">
-    <view class="muted">超支合计</view>
-    <view class="total-amt">{{gapTotalText}}</view>
-    <view class="muted detail-line">{{budgetPaidTotalText}}</view>
+  <view class="card total-card surplus" wx:if="{{tab==='surplus'}}">
+    <view class="total-label">节余合计</view>
+    <view class="total-amt amt-surplus">{{surplusTotalText}}</view>
+    <view class="muted detail-line">{{surplusDetailText}}</view>
+  </view>
+
+  <view class="card" wx:if="{{!rows.length}}">
+    <text class="muted">{{emptyHint}}</text>
   </view>
 
   <view
@@ -23,7 +29,7 @@
   >
     <view class="gap-top">
       <text class="name">{{item.title}}</text>
-      <text class="gap-amt">{{item.gapText}}</text>
+      <text class="gap-amt {{amountToneClass}}">{{item.gapText}}</text>
     </view>
     <view class="muted detail-line">{{item.budgetPaidText}}</view>
   </view>

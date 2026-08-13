@@ -3,23 +3,29 @@
     <text class="err">{{loadError}}</text>
   </view>
 
+  <view class="card profile-card" bindtap="openSettings">
+    <image wx:if="{{avatarPath}}" class="avatar-sm" src="{{avatarPath}}" mode="aspectFill" />
+    <view wx:else class="avatar-sm placeholder">{{nickname[0] || '我'}}</view>
+    <view class="profile-meta">
+      <view class="nickname">{{nickname}}</view>
+      <view class="muted">点击进入设置修改昵称与头像</view>
+    </view>
+    <text class="gear">⚙</text>
+  </view>
+
   <view class="card">
-    <view class="card-title">资料</view>
-    <view class="field">
-      <text class="label">昵称</text>
-      <view class="input-wrap">
-        <input value="{{nickname}}" bindinput="onNicknameInput" bindblur="onNicknameBlur" placeholder="我" />
-        <text class="clear" wx:if="{{nickname}}" data-field="nickname" bindtap="clearField">✕</text>
-      </view>
-    </view>
-    <view class="field">
-      <text class="label">项目名</text>
-      <view class="input-wrap">
-        <input value="{{projectName}}" bindinput="onProjectInput" bindblur="onProjectBlur" />
-        <text class="clear" wx:if="{{projectName}}" data-field="projectName" bindtap="clearField">✕</text>
-      </view>
-    </view>
+    <view class="card-title">当前账本</view>
+    <view class="muted">{{projectName}}</view>
     <view class="muted">成员：{{members}}</view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">账本管理</view>
+    <view class="ledger-row" wx:for="{{projects}}" wx:key="id">
+      <text class="ledger-name">{{item.name}}</text>
+      <text class="ledger-del" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="deleteLedger">删除</text>
+    </view>
+    <button class="btn-ghost spaced" bindtap="openTrash">垃圾箱</button>
   </view>
 
   <view class="card">
@@ -59,6 +65,4 @@
     <button class="btn-ghost spaced" bindtap="openImport">导入旧账本 CSV</button>
     <button class="btn-ghost spaced" bindtap="resetSample">重置为示例数据</button>
   </view>
-
-  <view class="muted footer">本地存储 · 未接云同步 · v0.1.0</view>
 </view>
