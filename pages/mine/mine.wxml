@@ -14,6 +14,32 @@
   </view>
 
   <view class="card">
+    <view class="card-title">云同步</view>
+    <view class="muted">{{jwt ? '已登录' : '未登录'}}</view>
+    <view class="muted" wx:if="{{isDevelop}}">摇一摇打开开发面板（可切正式环境）</view>
+    <block wx:if="{{!jwt}}">
+      <button class="btn-primary spaced" bindtap="wechatLogin">微信登录</button>
+      <button wx:if="{{isDevelop}}" class="btn-ghost spaced" bindtap="devLogin">开发登录</button>
+    </block>
+    <block wx:if="{{jwt}}">
+      <button wx:if="{{!phone}}" class="btn-ghost spaced" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber">绑定手机号</button>
+      <button wx:if="{{currentUnbound}}" class="btn-ghost spaced" bindtap="uploadLedger">上传当前账本</button>
+      <button class="btn-ghost spaced" bindtap="createInvite">生成邀请码</button>
+      <view class="invite-code" wx:if="{{lastInviteCode}}" bindtap="copyInviteShare">
+        <view class="invite-code-main">邀请码 {{lastInviteCode}}</view>
+        <view class="muted">点击复制（含 App 介绍，可发给家人）</view>
+      </view>
+      <view class="field">
+        <text class="label">邀请码</text>
+        <view class="input-wrap">
+          <input value="{{inviteInput}}" placeholder="输入邀请码加入" bindinput="onInviteInput" />
+        </view>
+      </view>
+      <button class="btn-primary" bindtap="joinInvite">加入账本</button>
+    </block>
+  </view>
+
+  <view class="card">
     <view class="card-title">当前账本</view>
     <view class="muted">{{projectName}}</view>
     <view class="muted">成员：{{members}}</view>

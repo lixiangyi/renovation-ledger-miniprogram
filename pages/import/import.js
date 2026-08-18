@@ -110,10 +110,25 @@ Page({
       success: (res) => {
         if (!res.confirm) return
         const { count } = store.importDraftsAsToBuy(selected)
-        wx.showToast({ title: `已导入 ${count} 项`, icon: 'success' })
-        setTimeout(() => {
-          wx.switchTab({ url: '/pages/list/list' })
-        }, 500)
+        const jwt = (store.getState().prefs || {}).jwt
+        const finish = () => {
+          wx.showToast({ title: `已导入 ${count} 项`, icon: 'success' })
+          setTimeout(() => {
+            wx.switchTab({ url: '/pages/list/list' })
+          }, 500)
+        }
+        if (jwt) {
+          require('../../utils/sync').importCurrent()
+            .then(finish)
+            .catch((err) => {
+              wx.showToast({
+                title: (err && err.message) || '已导入本机，云端上传失败',
+                icon: 'none',
+              })
+            })
+        } else {
+          finish()
+        }
       },
     })
   },

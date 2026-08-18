@@ -45,7 +45,10 @@ Page({
   },
 
   onShow() {
-    this.refresh()
+    const that = this
+    require('../../utils/sync').pullIfNeeded()
+      .catch(function () { /* toast in sync */ })
+      .then(function () { that.refresh() })
   },
 
   setFilter(e) {

@@ -14,6 +14,10 @@ function defaultPrefs() {
     paymentListGroupBy: 'stage',
     paymentListLayout: 'nested',
     searchHistory: [],
+    jwt: '',
+    cloudUserId: '',
+    pendingItemIds: [],
+    pendingSync: false,
   }
 }
 
@@ -22,6 +26,8 @@ function defaultProject() {
     id: uid('proj'),
     name: '我家装修',
     memberNames: ['我'],
+    cloudLedgerId: '',
+    cloudRevision: 0,
   }
 }
 
@@ -161,6 +167,8 @@ function viewOf(raw) {
   }
   if (!project.name) project.name = '我家装修'
   if (!Array.isArray(project.memberNames)) project.memberNames = ['我']
+  if (!project.cloudLedgerId) project.cloudLedgerId = ''
+  if (project.cloudRevision == null) project.cloudRevision = 0
   const items = (raw.items || []).filter((i) => i && i.projectId === project.id)
   return {
     prefs: raw.prefs || defaultPrefs(),
@@ -333,12 +341,31 @@ function switchProject(projectId) {
   return viewOf(raw)
 }
 
+function addCloudPlaceholder(summary) {
+  if (!summary || !summary.id) return getState()
+  const raw = ensureRaw()
+  if ((raw.projects || []).some((p) => p.cloudLedgerId === summary.id || p.id === summary.id)) {
+    return viewOf(raw)
+  }
+  raw.projects.push({
+    id: summary.id,
+    name: summary.name || '云账本',
+    memberNames: [],
+    cloudLedgerId: summary.id,
+    cloudRevision: summary.revision || 0,
+  })
+  writeRaw(raw)
+  return viewOf(raw)
+}
+
 function createProject(name, nickname) {
   const raw = ensureRaw()
   const project = {
     id: uid('proj'),
     name: String(name || '').trim() || '新账本',
     memberNames: [String(nickname || raw.prefs.nickname || '我').trim() || '我'],
+    cloudLedgerId: '',
+    cloudRevision: 0,
   }
   raw.projects.push(project)
   raw.currentProjectId = project.id
@@ -377,7 +404,13 @@ function upsertItems(items) {
 }
 
 function upsertItem(item) {
-  return upsertItems([item])
+  const view = upsertItems([item])
+  if (item && item.id) {
+    try {
+      require('./sync').pushItem(item.id).catch(function () { /* toast in sync */ })
+    } catch (e) { /* ignore */ }
+  }
+  return view
 }
 
 function importDraftsAsToBuy(drafts, options) {
@@ -430,6 +463,9 @@ function deleteItem(id) {
   const raw = ensureRaw()
   raw.items = raw.items.filter((i) => i.id !== id)
   writeRaw(raw)
+  try {
+    require('./sync').pushDelete(id).catch(function () { /* toast in sync */ })
+  } catch (e) { /* ignore */ }
   return viewOf(raw)
 }
 
@@ -582,6 +618,7 @@ module.exports = {
   setProject,
   switchProject,
   createProject,
+  addCloudPlaceholder,
   createProjectForImport,
   renameProject,
   upsertItem,

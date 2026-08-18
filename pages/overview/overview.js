@@ -69,7 +69,10 @@ Page({
 
   onShow() {
     this.setData(getExpandState())
-    this.refresh()
+    const that = this
+    require('../../utils/sync').pullIfNeeded()
+      .catch(function () { /* toast in sync */ })
+      .then(function () { that.refresh() })
   },
 
   openDrawer() {
@@ -85,7 +88,10 @@ Page({
     if (!id) return
     store.switchProject(id)
     this.setData({ drawerOpen: false })
-    this.refresh()
+    const that = this
+    require('../../utils/sync').pull()
+      .catch(function () { /* toast in sync */ })
+      .then(function () { that.refresh() })
   },
 
   startCreateLedger() {
@@ -103,7 +109,17 @@ Page({
   confirmCreateLedger() {
     store.createProject(this.data.newLedgerName)
     this.setData({ showCreate: false })
-    this.refresh()
+    const that = this
+    const jwt = (store.getState().prefs || {}).jwt
+    if (jwt) {
+      require('../../utils/sync').createCloudForCurrent()
+        .catch(function (err) {
+          wx.showToast({ title: '云端创建失败，账本仍在本机', icon: 'none' })
+        })
+        .then(function () { that.refresh() })
+    } else {
+      this.refresh()
+    }
   },
 
   startRenameCurrent() {

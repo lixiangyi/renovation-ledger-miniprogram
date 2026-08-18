@@ -20,6 +20,12 @@ Page({
     mildOverMaxPercent: 15,
     theme: DEFAULT_THEME,
     cssVars: '--page-bg:#E8F5E9;--primary:#2E7D32;--primary-container:#C8E6C9;',
+    jwt: '',
+    phone: '',
+    lastInviteCode: '',
+    inviteInput: '',
+    isDevelop: false,
+    currentUnbound: true,
     loadError: '',
   },
 
@@ -43,6 +49,10 @@ Page({
         projects: state.projects || [],
         healthColorEnabled: !!(state.prefs && state.prefs.healthColorEnabled),
         mildOverMaxPercent: (state.prefs && state.prefs.mildOverMaxPercent) || 15,
+        jwt: (state.prefs && state.prefs.jwt) || '',
+        phone: (state.prefs && state.prefs.phone) || '',
+        currentUnbound: !(state.project && state.project.cloudLedgerId),
+        isDevelop: require('../../utils/api').isDevelop(),
         loadError: '',
       })
     } catch (e) {
@@ -131,6 +141,140 @@ Page({
 
   openImport() {
     wx.navigateTo({ url: '/pages/import/import' })
+  },
+
+  wechatLogin() {
+    const that = this
+    wx.login({
+      success: async (res) => {
+        if (!res.code) {
+          wx.showToast({ title: '微信登录失败', icon: 'none' })
+          return
+        }
+        wx.showLoading({ title: '登录中', mask: true })
+        try {
+          await require('../../utils/sync').wechatLogin(res.code)
+          wx.hideLoading()
+          that.refresh()
+          wx.showToast({ title: '已登录', icon: 'success' })
+        } catch (err) {
+          wx.hideLoading()
+          wx.showToast({ title: (err && err.message) || '登录失败', icon: 'none' })
+        }
+      },
+      fail() {
+        wx.showToast({ title: '微信登录失败', icon: 'none' })
+      },
+    })
+  },
+
+  async onGetPhoneNumber(e) {
+    const code = e.detail && e.detail.code
+    if (!code) {
+      wx.showToast({ title: '未授权手机号', icon: 'none' })
+      return
+    }
+    wx.showLoading({ title: '绑定中', mask: true })
+    try {
+      await require('../../utils/sync').bindPhone(code)
+      this.refresh()
+      wx.hideLoading()
+      wx.showToast({ title: '已绑定手机号', icon: 'success' })
+    } catch (err) {
+      wx.hideLoading()
+      wx.showToast({ title: (err && err.message) || '绑定失败', icon: 'none' })
+    }
+  },
+
+  async devLogin() {
+    wx.showLoading({ title: '登录中', mask: true })
+    try {
+      await require('../../utils/sync').devLogin('mp')
+      this.refresh()
+      wx.hideLoading()
+      wx.showToast({ title: '已登录', icon: 'success' })
+    } catch (err) {
+      wx.hideLoading()
+      wx.showToast({ title: (err && err.message) || '登录失败', icon: 'none' })
+    }
+  },
+
+  async uploadLedger() {
+    if (this._cloudBusy) return
+    this._cloudBusy = true
+    wx.showLoading({ title: '上传中', mask: true })
+    try {
+      await require('../../utils/sync').importCurrent()
+      this.refresh()
+      wx.hideLoading()
+      wx.showToast({ title: '已上传到云端', icon: 'success' })
+    } catch (err) {
+      wx.hideLoading()
+      wx.showToast({ title: (err && err.message) || '上传失败', icon: 'none' })
+    } finally {
+      this._cloudBusy = false
+    }
+  },
+
+  async createInvite() {
+    if (this._cloudBusy) return
+    this._cloudBusy = true
+    wx.showLoading({ title: '生成中', mask: true })
+    try {
+      const res = await require('../../utils/sync').createInvite()
+      const code = res && res.code
+      this.setData({ lastInviteCode: code || '' })
+      wx.hideLoading()
+      if (code) {
+        this.copyInviteShare(code)
+      } else {
+        wx.showToast({ title: '生成失败', icon: 'none' })
+      }
+    } catch (err) {
+      wx.hideLoading()
+      wx.showToast({ title: (err && err.message) || '生成失败', icon: 'none' })
+    } finally {
+      this._cloudBusy = false
+    }
+  },
+
+  copyInviteShare(code) {
+    const inviteShare = require('../../utils/inviteShare')
+    const raw = typeof code === 'string' ? code : this.data.lastInviteCode
+    if (!String(raw || '').trim()) {
+      wx.showToast({ title: '暂无邀请码', icon: 'none' })
+      return
+    }
+    wx.setClipboardData({
+      data: inviteShare.message(raw),
+      success() {
+        wx.showToast({ title: '邀请信息已复制', icon: 'success' })
+      },
+    })
+  },
+
+  onInviteInput(e) {
+    this.setData({ inviteInput: e.detail.value })
+  },
+
+  async joinInvite() {
+    const inviteShare = require('../../utils/inviteShare')
+    const code = inviteShare.extractCode(this.data.inviteInput || '')
+    if (!code || this._cloudBusy) return
+    this._cloudBusy = true
+    wx.showLoading({ title: '加入中', mask: true })
+    try {
+      await require('../../utils/sync').joinInvite(code)
+      this.setData({ inviteInput: '' })
+      this.refresh()
+      wx.hideLoading()
+      wx.showToast({ title: '已加入账本', icon: 'success' })
+    } catch (err) {
+      wx.hideLoading()
+      wx.showToast({ title: (err && err.message) || '加入失败', icon: 'none' })
+    } finally {
+      this._cloudBusy = false
+    }
   },
 
   resetSample() {

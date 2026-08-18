@@ -1,25 +1,15 @@
 const store = require('../../utils/store')
 const { fenToYuan } = require('../../utils/money')
-const { aggregate, resolveHealth } = require('../../utils/metrics')
+const { aggregate, resolveHealth, interleaveLargeAndSmall } = require('../../utils/metrics')
 const themeUtil = require('../../utils/theme')
 
 const COLORS = ['#5C6BC0', '#26A69A', '#FFA726', '#EF5350', '#AB47BC', '#42A5F5', '#66BB6A', '#8D6E63']
-const LABEL_MIN = 1.5
-const LABEL_INSIDE_MIN = 12
 
 function shortName(raw) {
   const t = String(raw || '').trim()
   if (!t) return ''
   if (t.length <= 4) return t
   return t.slice(0, 3) + '…'
-}
-
-function luminance(hex) {
-  const h = hex.replace('#', '')
-  const r = parseInt(h.slice(0, 2), 16) / 255
-  const g = parseInt(h.slice(2, 4), 16) / 255
-  const b = parseInt(h.slice(4, 6), 16) / 255
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
 
 function displayLegend(legend, selectedIndex) {
@@ -76,18 +66,10 @@ Page({
         value: g[metricKey],
         index: i,
         selected: i === selectedIndex,
-        labelMode: percent >= LABEL_INSIDE_MIN ? 'inside'
-          : (percent >= LABEL_MIN ? 'outside' : 'none'),
+        labelMode: 'outside',
       }
     })
-    const hasTiny = legend.some((l) => l.labelMode === 'none')
-    const hasOutside = legend.some((l) => l.labelMode === 'outside')
-    let tipText = '点击扇区或图例可高亮'
-    if (hasTiny || hasOutside) {
-      tipText = (hasTiny ? `小于 ${LABEL_MIN}% 的只在图例查看；` : '')
-        + (hasOutside ? '较小扇区关键字与百分比标在外侧；' : '')
-        + '点击可高亮图例'
-    }
+    const tipText = '点击扇区或图例可高亮'
     const rows = groups.map((g) => {
       const over = g.projected - g.budget
       const health = resolveHealth(Math.max(0, over), g.budget || 1, state.prefs.mildOverMaxPercent)
@@ -142,7 +124,7 @@ Page({
     for (let i = 0; i < meta.slices.length; i++) {
       acc += meta.slices[i].angle
       if (angle <= acc) {
-        hit = i
+        hit = meta.slices[i].legendIndex
         break
       }
     }
@@ -173,8 +155,8 @@ Page({
       ctx.clearRect(0, 0, width, height)
       const cx = width / 2
       const cy = height / 2
-      const r = Math.min(width, height) * 0.40
-      const inner = r * 0.48
+      const r = Math.min(width, height) * 0.50
+      const inner = selectedIndex >= 0 ? r * 0.28 : r * 0.04
       let start = -Math.PI / 2
       const slices = legend.filter((l) => l.value > 0)
       if (!slices.length || total <= 0) {
@@ -185,17 +167,20 @@ Page({
         this.setData({ _pieMeta: null })
         return
       }
-      const sliceAngles = slices.map((s) => ({
+      const pieSlices = interleaveLargeAndSmall(slices, (s) => s.value)
+      const sliceAngles = pieSlices.map((s) => ({
         angle: (s.value / total) * Math.PI * 2,
         color: s.color,
         labelMode: s.labelMode,
         shortKey: s.shortKey,
+        percentValue: s.percent,
         percentText: s.percentText,
+        legendIndex: s.index,
       }))
 
       // slices
-      sliceAngles.forEach((s, i) => {
-        const selected = i === selectedIndex
+      sliceAngles.forEach((s) => {
+        const selected = s.legendIndex === selectedIndex
         const drawR = selected ? r + 10 : r
         ctx.beginPath()
         ctx.moveTo(cx, cy)
@@ -220,47 +205,78 @@ Page({
       ctx.fill()
       ctx.globalCompositeOperation = 'source-over'
 
-      // labels
+      // labels: radial from center, then short horizontal; overlap → longer radial
       start = -Math.PI / 2
+      const pad = 6
+      const baseRadial = 10
+      const radialStep = 8
+      const maxRadial = 26
+      const maxH = 8
+      const minGap = 18
+      const candidates = []
       sliceAngles.forEach((s) => {
         const mid = start + s.angle / 2
         const cos = Math.cos(mid)
         const sin = Math.sin(mid)
-        if (s.labelMode === 'inside' && s.angle > 0.22) {
-          const tx = cx + cos * (r * 0.7)
-          const ty = cy + sin * (r * 0.7)
-          ctx.fillStyle = luminance(s.color) > 0.62 ? '#333' : '#fff'
-          ctx.font = 'bold 11px sans-serif'
-          ctx.textAlign = 'center'
-          ctx.textBaseline = 'middle'
-          if (s.shortKey) {
-            ctx.fillText(s.shortKey, tx, ty - 7)
-            ctx.fillText(s.percentText, tx, ty + 7)
-          } else {
-            ctx.fillText(s.percentText, tx, ty)
-          }
-        } else if (s.labelMode === 'outside') {
-          const x1 = cx + cos * (r + 2)
-          const y1 = cy + sin * (r + 2)
-          const x2 = cx + cos * (r + 26)
-          const y2 = cy + sin * (r + 26)
-          const onRight = cos >= 0
-          const x3 = onRight ? x2 + 16 : x2 - 16
-          ctx.strokeStyle = s.color
-          ctx.lineWidth = 1.5
-          ctx.beginPath()
-          ctx.moveTo(x1, y1)
-          ctx.lineTo(x2, y2)
-          ctx.lineTo(x3, y2)
-          ctx.stroke()
-          ctx.fillStyle = '#333'
-          ctx.font = 'bold 11px sans-serif'
-          ctx.textAlign = onRight ? 'left' : 'right'
-          ctx.textBaseline = 'middle'
-          const label = s.shortKey ? `${s.shortKey} ${s.percentText}` : s.percentText
-          ctx.fillText(label, onRight ? x3 + 3 : x3 - 3, y2)
-        }
+        const x1 = cx + cos * (r + 2)
+        const y1 = cy + sin * (r + 2)
+        candidates.push({
+          color: s.color,
+          cos,
+          sin,
+          x1,
+          y1,
+          onRight: cos >= 0,
+          label: s.shortKey ? `${s.shortKey} ${s.percentText}` : s.percentText,
+          radial: baseRadial,
+        })
         start += s.angle
+      })
+      ctx.font = 'bold 11px sans-serif'
+      const resolveSide = (side) => {
+        const items = candidates.filter((it) => it.onRight === side)
+          .sort((a, b) => (a.y1 + a.sin * a.radial) - (b.y1 + b.sin * b.radial))
+        for (let i = 1; i < items.length; i++) {
+          const prev = items[i - 1]
+          const cur = items[i]
+          let tries = 0
+          while (tries < 6) {
+            const yPrev = prev.y1 + prev.sin * prev.radial
+            const yCur = cur.y1 + cur.sin * cur.radial
+            if (Math.abs(yCur - yPrev) >= minGap) break
+            if (cur.radial >= maxRadial) break
+            cur.radial = Math.min(maxRadial, cur.radial + radialStep)
+            tries += 1
+          }
+          if (tries === 0 && i % 2 === 1) {
+            cur.radial = Math.min(maxRadial, baseRadial + radialStep)
+          }
+        }
+      }
+      resolveSide(true)
+      resolveSide(false)
+      candidates.forEach((it) => {
+        const x2 = it.x1 + it.cos * it.radial
+        const y2 = it.y1 + it.sin * it.radial
+        const tw = ctx.measureText(it.label).width
+        const remaining = it.onRight ? (width - pad - tw - 3 - x2) : (x2 - pad - tw - 3)
+        const hLen = Math.max(0, Math.min(maxH, remaining))
+        const x3 = it.onRight ? x2 + hLen : x2 - hLen
+        ctx.strokeStyle = it.color
+        ctx.lineWidth = 1.5
+        ctx.beginPath()
+        ctx.moveTo(it.x1, it.y1)
+        ctx.lineTo(x2, y2)
+        ctx.lineTo(x3, y2)
+        ctx.stroke()
+        ctx.fillStyle = '#333'
+        ctx.textAlign = it.onRight ? 'left' : 'right'
+        ctx.textBaseline = 'middle'
+        let textX = it.onRight ? x3 + 3 : x3 - 3
+        textX = it.onRight
+          ? Math.min(textX, width - pad - tw)
+          : Math.max(textX, pad + tw)
+        ctx.fillText(it.label, textX, y2)
       })
 
       this.setData({

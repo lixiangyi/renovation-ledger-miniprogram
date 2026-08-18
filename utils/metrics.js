@@ -163,6 +163,22 @@ function classifyPaidBudgetGaps(items) {
   return { overspend, surplus }
 }
 
+/** 饼图扇区交叉填充：大块与小块交替，避免小扇区挤在同一角度。图例仍用原始顺序。 */
+function interleaveLargeAndSmall(items, valueOf) {
+  if (!items || items.length <= 2) return (items || []).slice()
+  const sorted = items.slice().sort((a, b) => valueOf(b) - valueOf(a))
+  const result = []
+  let lo = 0
+  let hi = sorted.length - 1
+  let takeLarge = true
+  while (lo <= hi) {
+    if (takeLarge) result.push(sorted[lo++])
+    else result.push(sorted[hi--])
+    takeLarge = !takeLarge
+  }
+  return result
+}
+
 function gapRow(item, paid, budget, gapAbs, percent) {
   return {
     id: item.id,
@@ -187,4 +203,5 @@ module.exports = {
   percentHealthClass,
   aggregate,
   classifyPaidBudgetGaps,
+  interleaveLargeAndSmall,
 }
