@@ -6,10 +6,9 @@ const {
   paymentTypeLabel,
   paymentStatusLabel,
   PaymentStatus,
-  PaymentType,
-  effectiveCost,
-  uid,
+  ItemStatus,
 } = require('../../utils/model')
+const times = require('../../utils/operationTimes')
 const { displayUnpaid, suggestUnpaidAmount } = require('../../utils/unpaid')
 const themeUtil = require('../../utils/theme')
 const {
@@ -57,6 +56,10 @@ Page({
     editBudgetYuan: '',
     editContractYuan: '',
     editRemark: '',
+    editRecordedDate: '',
+    editSettledOnDate: '',
+    isSettled: false,
+    editPaidOnDate: '',
   },
 
   onLoad(query) {
@@ -97,6 +100,12 @@ Page({
         effectiveText: fenToYuan(effectiveCost(item)),
         paidText: fenToYuan(paid),
         unpaidText: fenToYuan(unpaidSum),
+        recordedDateText: item.recordedDate || '—',
+        settled: st === ItemStatus.SETTLED,
+        settledOnDate: item.settledOnDate || '—',
+        settledAtText: item.settledAtEpochMs
+          ? times.formatDateTimeToMinute(item.settledAtEpochMs)
+          : '',
         remark: item.remark || '无',
         payments: (item.payments || []).map((p) => ({
           id: p.id,
@@ -104,6 +113,11 @@ Page({
           status: paymentStatusLabel(p.status),
           amountText: fenToYuan(p.amount),
           note: p.note || '',
+          showTimes: p.status === PaymentStatus.PAID,
+          paidOnDate: p.paidOnDate || '—',
+          markedPaidText: p.paidAtEpochMs
+            ? times.formatDateTimeToMinute(p.paidAtEpochMs)
+            : '',
         })),
       },
     })
@@ -137,6 +151,9 @@ Page({
       editBudgetYuan: String((item.budgetAmount || 0) / 100),
       editContractYuan: item.contractAmount != null ? String(item.contractAmount / 100) : '',
       editRemark: item.remark || '',
+      editRecordedDate: item.recordedDate || '',
+      editSettledOnDate: item.settledOnDate || '',
+      isSettled: deriveStatus(item) === ItemStatus.SETTLED,
     })
   },
 
@@ -148,6 +165,8 @@ Page({
   onEditBudget(e) { this.setData({ editBudgetYuan: e.detail.value }) },
   onEditContract(e) { this.setData({ editContractYuan: e.detail.value }) },
   onEditRemark(e) { this.setData({ editRemark: e.detail.value }) },
+  onEditRecordedDate(e) { this.setData({ editRecordedDate: e.detail.value }) },
+  onEditSettledOnDate(e) { this.setData({ editSettledOnDate: e.detail.value }) },
   onEditStage(e) {
     const editStageIndex = Number(e.detail.value)
     this.setData({
@@ -186,6 +205,9 @@ Page({
     const contract = (this.data.editContractYuan || '').trim()
       ? yuanToFen(this.data.editContractYuan)
       : null
+    const settledDate = deriveStatus(item) === ItemStatus.SETTLED
+      ? ((this.data.editSettledOnDate || '').trim() || null)
+      : item.settledOnDate
     store.upsertItem(Object.assign({}, item, {
       name,
       stage: this.data.editStage,
@@ -193,7 +215,9 @@ Page({
       space: this.data.editSpace || '',
       budgetAmount: budget,
       contractAmount: contract,
+      recordedDate: (this.data.editRecordedDate || '').trim() || null,
       remark: (this.data.editRemark || '').trim(),
+      settledOnDate: settledDate,
     }))
     this.setData({ editingItem: false })
     wx.showToast({ title: '已保存', icon: 'success' })
@@ -214,6 +238,7 @@ Page({
       editStatusIndex,
       editAmountYuan: String((pay.amount || 0) / 100),
       editNote: pay.note || '',
+      editPaidOnDate: pay.paidOnDate || '',
     })
   },
 
@@ -252,6 +277,10 @@ Page({
     this.setData({ editNote: e.detail.value })
   },
 
+  onEditPaidOnDate(e) {
+    this.setData({ editPaidOnDate: e.detail.value })
+  },
+
   savePay() {
     const item = store.getItem(this.data.id)
     if (!item) return
@@ -262,19 +291,23 @@ Page({
     }
     const type = PAY_TYPES[this.data.editTypeIndex].value
     const status = PAY_STATUS[this.data.editStatusIndex].value
+    const now = Date.now()
+    const today = times.today(now)
     const payments = (item.payments || []).map((p) => {
       if (p.id !== this.data.editPayId) return p
-      return Object.assign({}, p, {
-        type,
-        amount,
+      return times.applyPaymentStatus(
+        Object.assign({}, p, {
+          type,
+          amount,
+          note: (this.data.editNote || '').trim(),
+        }),
         status,
-        note: (this.data.editNote || '').trim(),
-        paidAtEpochMs: status === PaymentStatus.PAID
-          ? (p.paidAtEpochMs || Date.now())
-          : null,
-      })
+        now,
+        today,
+        this.data.editPaidOnDate,
+      )
     })
-    store.upsertItem(Object.assign({}, item, { payments }))
+    store.upsertItem(times.syncSettleFields(Object.assign({}, item, { payments }), now, today, false))
     this.setData({ editing: false, editPayId: '' })
     wx.showToast({ title: '已保存', icon: 'success' })
     this.refresh()
@@ -289,7 +322,13 @@ Page({
         const item = store.getItem(this.data.id)
         if (!item) return
         const payments = (item.payments || []).filter((p) => p.id !== this.data.editPayId)
-        store.upsertItem(Object.assign({}, item, { payments }))
+        const now = Date.now()
+        store.upsertItem(times.syncSettleFields(
+          Object.assign({}, item, { payments }),
+          now,
+          times.today(now),
+          false,
+        ))
         this.setData({ editing: false, editPayId: '' })
         wx.showToast({ title: '已删除', icon: 'success' })
         this.refresh()
@@ -304,32 +343,9 @@ Page({
   settle() {
     const item = store.getItem(this.data.id)
     if (!item) return
-    const state = store.getState()
-    const nickname = state.prefs.nickname
+    const nickname = store.getState().prefs.nickname
     const now = Date.now()
-    const payments = (item.payments || []).map((p) => {
-      if (p.status === PaymentStatus.UNPAID) {
-        return Object.assign({}, p, { status: PaymentStatus.PAID, paidAtEpochMs: now })
-      }
-      return p
-    })
-    const paidSum = payments
-      .filter((p) => p.status === PaymentStatus.PAID)
-      .reduce((s, p) => s + p.amount, 0)
-    const gap = effectiveCost(item) - paidSum
-    if (gap > 0) {
-      payments.push({
-        id: uid('pay'),
-        budgetItemId: item.id,
-        type: PaymentType.OTHER,
-        amount: gap,
-        status: PaymentStatus.PAID,
-        paidAtEpochMs: now,
-        note: '结清补差',
-        createdBy: nickname,
-      })
-    }
-    store.upsertItem(Object.assign({}, item, { payments }))
+    store.upsertItem(times.explicitSettle(item, now, times.today(now), nickname))
     wx.showToast({ title: '已结清', icon: 'success' })
     this.refresh()
   },

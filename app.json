@@ -4,6 +4,7 @@
     "pages/list/list",
     "pages/stats/stats",
     "pages/mine/mine",
+    "pages/login/login",
     "pages/detail/detail",
     "pages/entry/entry",
     "pages/pending/pending",
@@ -56,5 +57,10 @@
   },
   "style": "v2",
   "sitemapLocation": "sitemap.json",
-  "lazyCodeLoading": "requiredComponents"
+  "lazyCodeLoading": "requiredComponents",
+  "permission": {
+    "scope.record": {
+      "desc": "用于语音记账时录制短音频并转写"
+    }
+  }
 }

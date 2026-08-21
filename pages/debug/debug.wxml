@@ -6,13 +6,14 @@
       <view class="chip {{env === 'dev' ? 'active' : ''}}" bindtap="setDev">开发</view>
       <view class="chip {{env === 'prod' ? 'active' : ''}}" bindtap="setProd">正式</view>
     </view>
-    <view class="muted">{{env === 'dev' ? '开发默认 127.0.0.1:8080' : '正式环境 api.renovation-ledger.app'}}</view>
+    <view class="muted">{{env === 'dev' ? '开发默认电脑局域网' : '正式环境 api.renovation-ledger.app'}}</view>
     <view class="field">
       <text class="label">服务器</text>
       <view class="input-wrap">
-        <input value="{{serverBaseUrl}}" placeholder="http://127.0.0.1:8080" bindinput="onServerUrlInput" />
+        <input value="{{serverBaseUrl}}" placeholder="http://10.35.86.169:8080" bindinput="onServerUrlInput" />
       </view>
     </view>
-    <button class="btn-ghost" bindtap="saveServerUrl">保存服务器地址</button>
+    <button class="btn-ghost spaced" bindtap="saveServerUrl">保存服务器地址</button>
+    <button class="btn-ghost spaced" wx:if="{{env === 'dev'}}" bindtap="ping">测通服务器</button>
   </view>
 </view>

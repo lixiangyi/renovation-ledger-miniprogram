@@ -44,6 +44,7 @@ function sampleItems(projectId, nickname) {
         amount,
         status: PaymentStatus.PAID,
         paidAtEpochMs: Date.now(),
+        paidOnDate: require('./operationTimes').today(Date.now()),
         note: '结清补差',
         createdBy: nickname,
       }]
@@ -434,10 +435,11 @@ function importDraftsAsToBuy(drafts, options) {
       amount: p.amountCents != null ? p.amountCents : p.amount,
       status: p.status,
       paidAtEpochMs: p.paidAtEpochMs || null,
+      paidOnDate: p.paidOnDate || null,
       note: p.note || '',
       createdBy: p.createdBy || '',
     }))
-    return {
+    return require('./operationTimes').backfill({
       id: itemId,
       projectId,
       name: d.name,
@@ -451,7 +453,7 @@ function importDraftsAsToBuy(drafts, options) {
       remark: d.remark || '',
       isNewAddition: true,
       payments,
-    }
+    })
   })
   const raw = ensureRaw()
   items.reverse().forEach((item) => raw.items.unshift(item))
@@ -470,7 +472,8 @@ function deleteItem(id) {
 }
 
 function getItem(id) {
-  return ensureRaw().items.find((i) => i.id === id) || null
+  const item = ensureRaw().items.find((i) => i.id === id) || null
+  return item ? require('./operationTimes').backfill(item) : null
 }
 
 function resetSample() {
@@ -497,18 +500,18 @@ function clearAllItems() {
 
 function exportCsv(state) {
   const { deriveStatus, statusLabel, paymentTypeLabel, paymentStatusLabel } = require('./model')
-  const lines = ['项名称,阶段,分类,预算元,合同元,状态,付款类型,付款金额元,付款状态,日期,记账人']
+  const times = require('./operationTimes')
+  const lines = ['项名称,阶段,分类,预算元,合同元,状态,付款类型,付款金额元,付款状态,日期,记账人,标记已付时间,结清日期,结清操作时间']
   state.items.forEach((item) => {
     const st = statusLabel(deriveStatus(item))
     const budget = ((item.budgetAmount || 0) / 100).toFixed(2)
     const contract = item.contractAmount == null ? '' : (item.contractAmount / 100).toFixed(2)
+    const settledAt = item.settledAtEpochMs ? times.formatDateTimeToMinute(item.settledAtEpochMs) : ''
     if (!item.payments || !item.payments.length) {
-      lines.push([item.name, item.stage, item.category || '', budget, contract, st, '', '', '', '', ''].join(','))
+      lines.push([item.name, item.stage, item.category || '', budget, contract, st, '', '', '', '', '', '', item.settledOnDate || '', settledAt].join(','))
     } else {
       item.payments.forEach((p) => {
-        const date = p.paidAtEpochMs
-          ? new Date(p.paidAtEpochMs).toISOString().slice(0, 10)
-          : ''
+        const marked = p.paidAtEpochMs ? times.formatDateTimeToMinute(p.paidAtEpochMs) : ''
         lines.push([
           item.name,
           item.stage,
@@ -519,8 +522,11 @@ function exportCsv(state) {
           paymentTypeLabel(p.type),
           (p.amount / 100).toFixed(2),
           paymentStatusLabel(p.status),
-          date,
+          p.paidOnDate || '',
           p.createdBy || '',
+          marked,
+          item.settledOnDate || '',
+          settledAt,
         ].join(','))
       })
     }

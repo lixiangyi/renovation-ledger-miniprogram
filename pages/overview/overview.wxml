@@ -171,5 +171,31 @@
     </view>
   </view>
 
-  <view class="fab" bindtap="goEntry">＋ 记一笔</view>
+  <view class="fab-row">
+    <view class="fab ghost" bindtap="openVoice">🎤 语音</view>
+    <view class="fab" bindtap="goEntry">＋ 记一笔</view>
+  </view>
+
+  <view class="voice-mask" wx:if="{{voiceOpen}}" catchtouchmove="noop">
+    <view class="voice-sheet">
+      <view class="card-title">语音助手</view>
+      <view class="muted" wx:if="{{voiceStatus}}">{{voiceStatus}}</view>
+      <button
+        class="btn-primary hold-btn"
+        bindtouchstart="onVoiceHoldStart"
+        bindtouchend="onVoiceHoldEnd"
+        bindtouchcancel="onVoiceHoldEnd"
+      >按住说话</button>
+      <button class="btn-ghost" size="mini" bindtap="useVoiceTyped">改用文字输入</button>
+      <textarea
+        wx:if="{{voiceTypedVisible}}"
+        class="voice-textarea"
+        value="{{voiceDraft}}"
+        bindinput="onVoiceDraft"
+        placeholder="输入要记账的内容"
+      />
+      <button wx:if="{{voiceTypedVisible}}" class="btn-primary" size="mini" bindtap="submitVoiceDraft">继续分析</button>
+      <button class="btn-ghost" size="mini" bindtap="closeVoice">关闭</button>
+    </view>
+  </view>
 </view>

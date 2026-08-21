@@ -3,7 +3,7 @@
  */
 const MAGIC = '#renovation_ledger_autosave_v1'
 const HEADER =
-  'record_type,project_id,project_name,member_names,item_id,item_name,stage,category,space,budget_fen,contract_fen,merchant,recorded_date,remark,is_new_addition,payment_id,payment_type,payment_amount_fen,payment_status,paid_at_epoch_ms,payment_note,created_by'
+  'record_type,project_id,project_name,member_names,item_id,item_name,stage,category,space,budget_fen,contract_fen,merchant,recorded_date,remark,is_new_addition,payment_id,payment_type,payment_amount_fen,payment_status,paid_at_epoch_ms,payment_note,created_by,paid_on_date,settled_on_date,settled_at_epoch_ms'
 
 function escapeCsvField(value) {
   const s = String(value == null ? '' : value)
@@ -67,6 +67,9 @@ function encode(snapshot) {
       item.recordedDate || '',
       item.remark || '',
       item.isNewAddition ? '1' : '0',
+      '', '', '', '', '', '', '', '',
+      item.settledOnDate || '',
+      item.settledAtEpochMs == null ? '' : String(item.settledAtEpochMs),
     ]))
   })
   payments.forEach((p) => {
@@ -81,6 +84,9 @@ function encode(snapshot) {
       p.paidAtEpochMs == null ? '' : String(p.paidAtEpochMs),
       p.note || '',
       p.createdBy || '',
+      p.paidOnDate || '',
+      '',
+      '',
     ]))
   })
   return '\uFEFF' + lines.join('\n') + '\n'
@@ -132,6 +138,8 @@ function decode(csvText) {
           recordedDate: (cols[12] || '').trim() || null,
           remark: (cols[13] || '').trim(),
           isNewAddition: flag === '1',
+          settledOnDate: (cols[23] || '').trim() || null,
+          settledAtEpochMs: (cols[24] || '').trim() ? parseInt(cols[24], 10) : null,
           payments: [],
         })
       } else if (type === 'payment') {
@@ -148,6 +156,7 @@ function decode(csvText) {
           amount,
           status: (cols[18] || '').trim(),
           paidAtEpochMs: paidRaw === '' ? null : parseInt(paidRaw, 10),
+          paidOnDate: (cols[22] || '').trim() || null,
           note: (cols[20] || '').trim(),
           createdBy: (cols[21] || '').trim(),
         })

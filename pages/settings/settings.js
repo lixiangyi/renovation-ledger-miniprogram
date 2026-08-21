@@ -1,5 +1,6 @@
 const store = require('../../utils/store')
 const themeUtil = require('../../utils/theme')
+const aiKeys = require('../../utils/aiKeys')
 
 Page({
   data: {
@@ -7,6 +8,10 @@ Page({
     nickname: '我',
     avatarPath: '',
     theme: { pageBg: '#E8F5E9', primary: '#2E7D32' },
+    deepSeekDraft: '',
+    dashScopeDraft: '',
+    deepSeekMasked: '',
+    dashScopeMasked: '',
   },
 
   onShow() {
@@ -23,10 +28,32 @@ Page({
         nickname: (state.prefs && state.prefs.nickname) || '我',
         avatarPath: (state.prefs && state.prefs.avatarPath) || '',
         theme: this.data.theme || { pageBg: '#E8F5E9', primary: '#2E7D32' },
+        deepSeekMasked: aiKeys.maskKey(aiKeys.getDeepSeekKey()),
+        dashScopeMasked: aiKeys.maskKey(aiKeys.getDashScopeKey()),
       })
     } catch (e) {
       // keep defaults
     }
+  },
+
+  onDeepSeekInput(e) {
+    this.setData({ deepSeekDraft: e.detail.value })
+  },
+
+  onDashScopeInput(e) {
+    this.setData({ dashScopeDraft: e.detail.value })
+  },
+
+  saveDeepSeek() {
+    aiKeys.setDeepSeekKey(this.data.deepSeekDraft)
+    this.setData({ deepSeekDraft: '', deepSeekMasked: aiKeys.maskKey(aiKeys.getDeepSeekKey()) })
+    wx.showToast({ title: '已保存 DeepSeek Key', icon: 'success' })
+  },
+
+  saveDashScope() {
+    aiKeys.setDashScopeKey(this.data.dashScopeDraft)
+    this.setData({ dashScopeDraft: '', dashScopeMasked: aiKeys.maskKey(aiKeys.getDashScopeKey()) })
+    wx.showToast({ title: '已保存百炼 Key', icon: 'success' })
   },
 
   onNicknameInput(e) {
@@ -37,16 +64,26 @@ Page({
     const nickname = (e.detail.value || '').trim() || '我'
     const state = store.getState()
     const old = state.prefs.nickname
-    store.setPrefs({ nickname })
-    const names = (state.project.memberNames || []).map((n) => (n === old ? nickname : n))
-    if (names.indexOf(nickname) < 0 && names.length) names[0] = nickname
-    const uniq = []
-    names.forEach((n) => {
-      if (uniq.indexOf(n) < 0) uniq.push(n)
-    })
-    store.setProject({ memberNames: uniq })
-    this.refresh()
-    wx.showToast({ title: '昵称已保存', icon: 'success' })
+    const sync = require('../../utils/sync')
+    Promise.resolve(sync.updateNickname(nickname))
+      .then((saved) => {
+        const names = (state.project.memberNames || []).map((n) => (n === old ? saved : n))
+        if (names.indexOf(saved) < 0 && names.length) names[0] = saved
+        const uniq = []
+        names.forEach((n) => {
+          if (uniq.indexOf(n) < 0) uniq.push(n)
+        })
+        store.setProject({ memberNames: uniq })
+        this.refresh()
+        wx.showToast({ title: '昵称已保存', icon: 'success' })
+      })
+      .catch((err) => {
+        this.refresh()
+        wx.showToast({
+          title: (err && err.message) || '昵称保存失败',
+          icon: 'none',
+        })
+      })
   },
 
   chooseAvatar() {

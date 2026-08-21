@@ -17,4 +17,20 @@
     <view class="card-title">版本</view>
     <view>v{{version}}</view>
   </view>
+
+  <view class="card">
+    <view class="card-title">AI / 语音 Key</view>
+    <view class="field">
+      <text class="label">DeepSeek（意图）</text>
+      <text class="hint" wx:if="{{deepSeekMasked}}">当前：{{deepSeekMasked}}</text>
+      <input password value="{{deepSeekDraft}}" bindinput="onDeepSeekInput" placeholder="sk-..." />
+      <button class="btn-ghost" size="mini" bindtap="saveDeepSeek">保存 DeepSeek Key</button>
+    </view>
+    <view class="field">
+      <text class="label">百炼 DashScope（转写）</text>
+      <text class="hint" wx:if="{{dashScopeMasked}}">当前：{{dashScopeMasked}}</text>
+      <input password value="{{dashScopeDraft}}" bindinput="onDashScopeInput" placeholder="sk-..." />
+      <button class="btn-ghost" size="mini" bindtap="saveDashScope">保存百炼 Key</button>
+    </view>
+  </view>
 </view>

@@ -9,6 +9,9 @@
       <view><text class="muted">已付</text><view>{{view.paidText}}</view></view>
       <view><text class="muted">未付合计</text><view>{{view.unpaidText}}</view></view>
     </view>
+    <view class="muted" style="margin-top: 12rpx;">记账日期：{{view.recordedDateText}}</view>
+    <view class="muted" wx:if="{{view.settled}}">结清日期：{{view.settledOnDate}}</view>
+    <view class="muted" wx:if="{{view.settled && view.settledAtText}}">结清操作时间：{{view.settledAtText}}</view>
     <view class="muted" style="margin-top: 12rpx;">备注：{{view.remark}}</view>
   </view>
 
@@ -18,6 +21,7 @@
       <view>
         <view>{{item.title}} · {{item.status}}</view>
         <view class="muted" wx:if="{{item.note}}">{{item.note}}</view>
+        <view class="muted" wx:if="{{item.showTimes}}">付款日 {{item.paidOnDate}}<text wx:if="{{item.markedPaidText}}"> · 标记已付 {{item.markedPaidText}}</text></view>
         <view class="edit-hint">点击修改</view>
       </view>
       <text>{{item.amountText}}</text>
@@ -28,7 +32,7 @@
   <view class="actions">
     <button class="btn-primary" bindtap="addPayment">记一笔付款</button>
     <button class="btn-ghost" bindtap="openEditItem">编辑预算项</button>
-    <button class="btn-ghost" bindtap="settle">标记已结清</button>
+    <button class="btn-ghost" wx:if="{{!view.settled}}" bindtap="settle">标记已结清</button>
     <button class="btn-danger" bindtap="remove">删除</button>
   </view>
 
@@ -66,6 +70,18 @@
         <input type="digit" value="{{editContractYuan}}" bindinput="onEditContract" placeholder="可选" />
       </view>
       <view class="field">
+        <text class="label">记账日</text>
+        <picker mode="date" value="{{editRecordedDate}}" bindchange="onEditRecordedDate">
+          <view class="picker">{{editRecordedDate || '请选择'}}</view>
+        </picker>
+      </view>
+      <view class="field" wx:if="{{isSettled}}">
+        <text class="label">结清日</text>
+        <picker mode="date" value="{{editSettledOnDate}}" bindchange="onEditSettledOnDate">
+          <view class="picker">{{editSettledOnDate || '请选择'}}</view>
+        </picker>
+      </view>
+      <view class="field">
         <text class="label">备注</text>
         <input value="{{editRemark}}" bindinput="onEditRemark" placeholder="可选" />
       </view>
@@ -96,6 +112,12 @@
       <view class="field">
         <text class="label">备注</text>
         <input value="{{editNote}}" bindinput="onEditNote" placeholder="可选" />
+      </view>
+      <view class="field" wx:if="{{payStatusList[editStatusIndex].value === 'PAID'}}">
+        <text class="label">付款日</text>
+        <picker mode="date" value="{{editPaidOnDate}}" bindchange="onEditPaidOnDate">
+          <view class="picker">{{editPaidOnDate || '请选择'}}</view>
+        </picker>
       </view>
       <button class="btn-primary" bindtap="savePay">保存</button>
       <button class="btn-ghost" style="margin-top: 16rpx;" bindtap="closeEdit">取消</button>

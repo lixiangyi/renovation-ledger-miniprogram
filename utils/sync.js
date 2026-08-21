@@ -7,6 +7,7 @@ function paymentToDto(p) {
     amount: p.amount,
     status: p.status,
     paidAtEpochMs: p.paidAtEpochMs || null,
+    paidOnDate: p.paidOnDate || null,
     note: p.note || '',
     receiptUri: p.receiptUri || null,
     createdByName: p.createdBy || '',
@@ -21,6 +22,7 @@ function paymentFromDto(p, itemId) {
     amount: p.amount,
     status: p.status,
     paidAtEpochMs: p.paidAtEpochMs || null,
+    paidOnDate: p.paidOnDate || null,
     note: p.note || '',
     receiptUri: p.receiptUri || null,
     createdBy: p.createdByName || p.createdBy || '',
@@ -40,6 +42,8 @@ function itemToDto(item) {
     recordedDate: item.recordedDate || null,
     remark: item.remark || '',
     isNewAddition: !!item.isNewAddition,
+    settledOnDate: item.settledOnDate || null,
+    settledAtEpochMs: item.settledAtEpochMs || null,
     payments: (item.payments || []).map(paymentToDto),
   }
 }
@@ -58,6 +62,8 @@ function itemFromDto(dto, projectId) {
     recordedDate: dto.recordedDate || null,
     remark: dto.remark || '',
     isNewAddition: !!dto.isNewAddition,
+    settledOnDate: dto.settledOnDate || null,
+    settledAtEpochMs: dto.settledAtEpochMs || null,
     payments: (dto.payments || []).map((p) => paymentFromDto(p, dto.id)),
   }
 }
@@ -156,6 +162,72 @@ async function wechatLogin(code) {
   return res
 }
 
+async function sendSmsCode(phone) {
+  return api.request('/auth/sms/send', {
+    method: 'POST',
+    data: { phone: String(phone || '').trim() },
+    token: '',
+  })
+}
+
+async function smsLogin(phone, code) {
+  const store = require('./store')
+  const res = await api.request('/auth/sms/login', {
+    method: 'POST',
+    data: {
+      phone: String(phone || '').trim(),
+      code: String(code || '').trim(),
+    },
+    token: '',
+  })
+  store.setPrefs({
+    jwt: res.token,
+    cloudUserId: res.userId,
+    phone: res.phone || phone,
+  })
+  if (res.nickname) store.setPrefs({ nickname: res.nickname })
+  return res
+}
+
+async function logout() {
+  const store = require('./store')
+  store.setPrefs({ jwt: '', cloudUserId: '', phone: '', nickname: '我' })
+}
+
+async function fetchMe() {
+  const store = require('./store')
+  if (!store.getState().prefs.jwt) return null
+  const me = await api.request('/me')
+  const patch = { nickname: (me && me.nickname) || '我' }
+  if (me && me.phone !== undefined) patch.phone = me.phone || ''
+  store.setPrefs(patch)
+  return me
+}
+
+async function updateNickname(nickname) {
+  const store = require('./store')
+  const value = String(nickname || '').trim() || '我'
+  if (!store.getState().prefs.jwt) {
+    store.setPrefs({ nickname: value })
+    return value
+  }
+  const me = await api.request('/me', {
+    method: 'PATCH',
+    data: { nickname: value },
+  })
+  store.setPrefs({
+    nickname: (me && me.nickname) || value,
+    phone: me && me.phone !== undefined ? (me.phone || '') : store.getState().prefs.phone,
+  })
+  return (me && me.nickname) || value
+}
+
+async function pingHealth() {
+  const res = await api.request('/health', { method: 'GET', token: '' })
+  if (!res || !res.ok) throw { message: '服务异常' }
+  return '连通成功'
+}
+
 async function bindPhone(phoneCode) {
   const store = require('./store')
   const res = await api.request('/auth/bind-phone', {
@@ -187,21 +259,12 @@ async function refreshOnOpen() {
   const store = require('./store')
   const state = store.getState()
   if (!state.prefs.jwt) return null
+  try {
+    await fetchMe()
+  } catch (e) { /* keep local cache */ }
   const summaries = await api.request('/ledgers')
   ;(summaries || []).forEach((s) => store.addCloudPlaceholder(s))
   return pull()
-}
-
-async function devLogin(label) {
-  const store = require('./store')
-  const res = await api.request('/auth/dev-login', {
-    method: 'POST',
-    data: { label: label || 'mp' },
-    token: '',
-  })
-  store.setPrefs({ jwt: res.token, cloudUserId: res.userId, phone: res.phone || '' })
-  if (res.nickname) store.setPrefs({ nickname: res.nickname })
-  return res
 }
 
 async function importCurrent() {
@@ -300,6 +363,47 @@ async function createInvite() {
   return api.request('/ledgers/' + cloudId + '/invites', { method: 'POST' })
 }
 
+async function renameLedger(projectId, name) {
+  const store = require('./store')
+  store.renameProject(projectId, name)
+  const state = store.getState()
+  const project = (state.projects || []).find((p) => p.id === projectId)
+  const cloudId = project && project.cloudLedgerId
+  if (!cloudId || !state.prefs.jwt) return store.getState()
+  const trimmed = String(name || '').trim() || '新账本'
+  const snapshot = await api.request('/ledgers/' + cloudId, {
+    method: 'PATCH',
+    data: { name: trimmed },
+  })
+  const nextProjects = (store.getState().projects || []).map((p) => {
+    if (p.id === projectId || p.cloudLedgerId === snapshot.id) {
+      return Object.assign({}, p, {
+        name: snapshot.name,
+        cloudLedgerId: snapshot.id,
+        cloudRevision: snapshot.revision,
+      })
+    }
+    return p
+  })
+  const current = store.getState()
+  let nextProject = current.project
+  if (nextProject && (nextProject.id === projectId || nextProject.cloudLedgerId === snapshot.id)) {
+    nextProject = Object.assign({}, nextProject, {
+      name: snapshot.name,
+      cloudLedgerId: snapshot.id,
+      cloudRevision: snapshot.revision,
+    })
+  }
+  store.write({
+    prefs: current.prefs,
+    projects: nextProjects,
+    currentProjectId: current.project.id,
+    project: nextProject,
+    items: current.items,
+  })
+  return store.getState()
+}
+
 async function joinInvite(code) {
   const snapshot = await api.request('/invites/join', {
     method: 'POST',
@@ -310,8 +414,13 @@ async function joinInvite(code) {
 }
 
 module.exports = {
-  devLogin,
   wechatLogin,
+  sendSmsCode,
+  smsLogin,
+  logout,
+  fetchMe,
+  updateNickname,
+  pingHealth,
   bindPhone,
   importCurrent,
   pull,
@@ -322,4 +431,5 @@ module.exports = {
   pushDelete,
   createInvite,
   joinInvite,
+  renameLedger,
 }

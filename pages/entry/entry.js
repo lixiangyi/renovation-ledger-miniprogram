@@ -5,6 +5,7 @@ const {
   PaymentType,
   PaymentStatus,
 } = require('../../utils/model')
+const times = require('../../utils/operationTimes')
 const { suggestUnpaidAmount } = require('../../utils/unpaid')
 const themeUtil = require('../../utils/theme')
 const {
@@ -53,6 +54,52 @@ Page({
       })
       wx.setNavigationBarTitle({ title: '记付款' })
     }
+    if (query.fromVoice === '1') {
+      const channel = this.getOpenerEventChannel && this.getOpenerEventChannel()
+      if (channel && channel.on) {
+        channel.on('voicePrefill', (prefill) => {
+          this.applyVoicePrefill(prefill || {})
+        })
+      }
+    }
+  },
+
+  applyVoicePrefill(prefill) {
+    const name = prefill.name || ''
+    const category = prefill.category || ''
+    const stage = prefill.stage || ''
+    const budgetYuan = prefill.amountYuan != null && prefill.amountYuan !== ''
+      ? String(prefill.amountYuan)
+      : ''
+    const deposit = Number(prefill.depositYuan) || 0
+    const finalPay = Number(prefill.finalPaymentYuan) || 0
+    let payAmountYuan = ''
+    let payPaid = true
+    let payTypeIndex = 1
+    if (deposit > 0) {
+      payAmountYuan = String(deposit)
+      payPaid = !!prefill.depositPaid
+      payTypeIndex = 0
+    } else if (finalPay > 0) {
+      payAmountYuan = String(finalPay)
+      payPaid = !!prefill.finalPaid
+      payTypeIndex = 2
+    } else if (budgetYuan) {
+      payAmountYuan = budgetYuan
+      payTypeIndex = 1
+    }
+    this.setData({
+      name,
+      category,
+      stage,
+      budgetYuan,
+      contractYuan: budgetYuan,
+      payAmountYuan,
+      payPaid,
+      payTypeIndex,
+      remark: prefill.rawText || '',
+    })
+    this.loadTaxonomy()
   },
 
   onShow() {
@@ -157,18 +204,27 @@ Page({
         return
       }
       const type = this.data.payTypes[this.data.payTypeIndex].value
+      const now = Date.now()
+      const today = times.today(now)
+      const status = this.data.payPaid ? PaymentStatus.PAID : PaymentStatus.UNPAID
+      const stamp = times.newPaymentTimes(status, now, today)
       const payment = {
         id: uid('pay'),
         budgetItemId: item.id,
         type,
         amount,
-        status: this.data.payPaid ? PaymentStatus.PAID : PaymentStatus.UNPAID,
-        paidAtEpochMs: this.data.payPaid ? Date.now() : null,
+        status,
+        paidAtEpochMs: stamp.paidAtEpochMs,
+        paidOnDate: stamp.paidOnDate,
         note: '',
         createdBy: nickname,
       }
-      const payments = (item.payments || []).concat([payment])
-      store.upsertItem(Object.assign({}, item, { payments }))
+      store.upsertItem(times.syncSettleFields(
+        Object.assign({}, item, { payments: (item.payments || []).concat([payment]) }),
+        now,
+        today,
+        false,
+      ))
       wx.showToast({ title: '已保存', icon: 'success' })
       setTimeout(() => wx.navigateBack(), 400)
       return
@@ -202,20 +258,25 @@ Page({
       isNewAddition: true,
       payments: [],
     }
+    const now = Date.now()
+    const today = times.today(now)
     const payAmount = yuanToFen(this.data.payAmountYuan)
     if (payAmount != null && payAmount > 0) {
+      const status = this.data.payPaid ? PaymentStatus.PAID : PaymentStatus.UNPAID
+      const stamp = times.newPaymentTimes(status, now, today)
       item.payments.push({
         id: uid('pay'),
         budgetItemId: item.id,
         type: this.data.payTypes[this.data.payTypeIndex].value,
         amount: payAmount,
-        status: this.data.payPaid ? PaymentStatus.PAID : PaymentStatus.UNPAID,
-        paidAtEpochMs: this.data.payPaid ? Date.now() : null,
+        status,
+        paidAtEpochMs: stamp.paidAtEpochMs,
+        paidOnDate: stamp.paidOnDate,
         note: '',
         createdBy: nickname,
       })
     }
-    store.upsertItem(item)
+    store.upsertItem(times.syncSettleFields(item, now, today, false))
     wx.showToast({ title: '已保存', icon: 'success' })
     setTimeout(() => wx.navigateBack(), 400)
   },

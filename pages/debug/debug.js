@@ -46,4 +46,16 @@ Page({
     this.setData({ serverBaseUrl: api.getBaseUrl() })
     wx.showToast({ title: '已保存', icon: 'success' })
   },
+
+  async ping() {
+    wx.showLoading({ title: '测通中', mask: true })
+    try {
+      const msg = await require('../../utils/sync').pingHealth()
+      wx.hideLoading()
+      wx.showToast({ title: msg || '连通成功', icon: 'success' })
+    } catch (err) {
+      wx.hideLoading()
+      wx.showToast({ title: (err && err.message) || '连通失败', icon: 'none' })
+    }
+  },
 })

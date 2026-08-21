@@ -191,6 +191,7 @@ function parseNative(lines, header) {
         amountCents: yuanToCents(payAmountYuan),
         status: parsePaymentStatus(statusLabel),
         paidAtEpochMs: parseDateEpoch(date),
+        paidOnDate: parsePaymentStatus(statusLabel) === PaymentStatus.PAID ? date : null,
         createdBy: payeeIdx >= 0 ? (cols[payeeIdx] || '').trim() : '',
       })
     }

@@ -9,6 +9,9 @@ const { computeProjectedSpendPercent, projectedGapAmountText } = require('../../
 const { PaymentStatus, effectiveCost, deriveStatus, statusLabel } = require('../../utils/model')
 const themeUtil = require('../../utils/theme')
 const { getExpandState, setExpandState } = require('../../utils/overview-expand')
+const aiKeys = require('../../utils/aiKeys')
+const dashScopeAsr = require('../../utils/dashScopeAsr')
+const voiceIntent = require('../../utils/voiceIntent')
 
 const DEFAULT_THEME = {
   pageBg: '#E8F5E9',
@@ -65,6 +68,11 @@ Page({
     overspendMore: 0,
     surplusMore: 0,
     loadError: '',
+    voiceOpen: false,
+    voiceStatus: '',
+    voiceDraft: '',
+    voiceTypedVisible: false,
+    voiceBusy: false,
   }, getExpandState()),
 
   onShow() {
@@ -154,9 +162,21 @@ Page({
   confirmRenameLedger() {
     const name = String(this.data.renameLedgerName || '').trim()
     if (!name || !this.data.renameProjectId) return
-    store.renameProject(this.data.renameProjectId, name)
-    this.setData({ showRename: false, renameProjectId: '', renameLedgerName: '' })
-    this.refresh()
+    const projectId = this.data.renameProjectId
+    const sync = require('../../utils/sync')
+    Promise.resolve(sync.renameLedger(projectId, name))
+      .then(() => {
+        this.setData({ showRename: false, renameProjectId: '', renameLedgerName: '' })
+        this.refresh()
+      })
+      .catch((err) => {
+        this.setData({ showRename: false, renameProjectId: '', renameLedgerName: '' })
+        this.refresh()
+        wx.showToast({
+          title: (err && err.message) || '云端改名失败，已保存本机',
+          icon: 'none',
+        })
+      })
   },
 
   startDeleteLedger(e) {
@@ -350,5 +370,135 @@ Page({
 
   goEntry() {
     wx.navigateTo({ url: '/pages/entry/entry' })
+  },
+
+  openVoice() {
+    this.setData({
+      voiceOpen: true,
+      voiceStatus: aiKeys.getDashScopeKey()
+        ? '按住说话，松手后转写'
+        : '未配置百炼 Key，可直接文字输入',
+      voiceDraft: '',
+      voiceTypedVisible: !aiKeys.getDashScopeKey(),
+      voiceBusy: false,
+    })
+  },
+
+  closeVoice() {
+    try {
+      if (this._recorder) this._recorder.stop()
+    } catch (e) { /* ignore */ }
+    this.setData({ voiceOpen: false, voiceBusy: false })
+  },
+
+  useVoiceTyped() {
+    this.setData({
+      voiceTypedVisible: true,
+      voiceStatus: '请输入要记账的内容',
+    })
+  },
+
+  onVoiceDraft(e) {
+    this.setData({ voiceDraft: e.detail.value })
+  },
+
+  onVoiceHoldStart() {
+    if (this.data.voiceBusy) return
+    if (!aiKeys.getDashScopeKey()) {
+      this.setData({ voiceTypedVisible: true, voiceStatus: '请先在设置页配置百炼 Key，或直接输入' })
+      return
+    }
+    const that = this
+    wx.authorize({
+      scope: 'scope.record',
+      success() {
+        that._startRecorder()
+      },
+      fail() {
+        that.setData({ voiceTypedVisible: true, voiceStatus: '需要麦克风权限，可改打字' })
+      },
+    })
+  },
+
+  _startRecorder() {
+    if (!this._recorder) {
+      this._recorder = wx.getRecorderManager()
+      const that = this
+      this._recorder.onStop((res) => {
+        that._onRecordStop(res)
+      })
+      this._recorder.onError(() => {
+        that.setData({ voiceBusy: false, voiceTypedVisible: true, voiceStatus: '录音失败，可改打字' })
+      })
+    }
+    this.setData({ voiceStatus: '正在录音…', voiceBusy: true })
+    this._recorder.start({
+      duration: 30000,
+      sampleRate: 16000,
+      numberOfChannels: 1,
+      encodeBitRate: 48000,
+      format: 'mp3',
+    })
+  },
+
+  onVoiceHoldEnd() {
+    if (!this.data.voiceBusy || !this._recorder) return
+    try {
+      this._recorder.stop()
+    } catch (e) {
+      this.setData({ voiceBusy: false })
+    }
+  },
+
+  _onRecordStop(res) {
+    const path = res && res.tempFilePath
+    if (!path) {
+      this.setData({ voiceBusy: false, voiceTypedVisible: true, voiceStatus: '没听清，可改打字' })
+      return
+    }
+    this.setData({ voiceStatus: '正在转写…' })
+    const that = this
+    dashScopeAsr.transcribeFile(path)
+      .then((text) => that._afterTranscript(text))
+      .catch(() => {
+        that.setData({
+          voiceBusy: false,
+          voiceTypedVisible: true,
+          voiceStatus: '转写失败，可改打字',
+        })
+      })
+  },
+
+  submitVoiceDraft() {
+    const text = (this.data.voiceDraft || '').trim()
+    if (!text) {
+      wx.showToast({ title: '请先输入内容', icon: 'none' })
+      return
+    }
+    this._afterTranscript(text)
+  },
+
+  _afterTranscript(text) {
+    this.setData({ voiceStatus: '正在分析…', voiceBusy: true, voiceDraft: text })
+    const that = this
+    voiceIntent.parseLedgerIntent(text)
+      .then((prefill) => {
+        that.setData({ voiceOpen: false, voiceBusy: false })
+        wx.navigateTo({
+          url: '/pages/entry/entry?fromVoice=1',
+          success(nav) {
+            if (nav.eventChannel) {
+              nav.eventChannel.emit('voicePrefill', prefill)
+            }
+          },
+        })
+      })
+      .catch(() => {
+        that.setData({
+          voiceBusy: false,
+          voiceTypedVisible: true,
+          voiceStatus: '分析失败，可改打字后继续',
+        })
+      })
   },
 })

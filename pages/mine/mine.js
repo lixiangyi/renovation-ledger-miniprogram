@@ -68,6 +68,16 @@ Page({
     wx.navigateTo({ url: '/pages/settings/settings' })
   },
 
+  openLogin() {
+    wx.navigateTo({ url: '/pages/login/login' })
+  },
+
+  logout() {
+    require('../../utils/sync').logout()
+    this.refresh()
+    wx.showToast({ title: '已退出登录', icon: 'success' })
+  },
+
   openTrash() {
     wx.navigateTo({ url: '/pages/trash/trash' })
   },
@@ -143,31 +153,6 @@ Page({
     wx.navigateTo({ url: '/pages/import/import' })
   },
 
-  wechatLogin() {
-    const that = this
-    wx.login({
-      success: async (res) => {
-        if (!res.code) {
-          wx.showToast({ title: '微信登录失败', icon: 'none' })
-          return
-        }
-        wx.showLoading({ title: '登录中', mask: true })
-        try {
-          await require('../../utils/sync').wechatLogin(res.code)
-          wx.hideLoading()
-          that.refresh()
-          wx.showToast({ title: '已登录', icon: 'success' })
-        } catch (err) {
-          wx.hideLoading()
-          wx.showToast({ title: (err && err.message) || '登录失败', icon: 'none' })
-        }
-      },
-      fail() {
-        wx.showToast({ title: '微信登录失败', icon: 'none' })
-      },
-    })
-  },
-
   async onGetPhoneNumber(e) {
     const code = e.detail && e.detail.code
     if (!code) {
@@ -183,19 +168,6 @@ Page({
     } catch (err) {
       wx.hideLoading()
       wx.showToast({ title: (err && err.message) || '绑定失败', icon: 'none' })
-    }
-  },
-
-  async devLogin() {
-    wx.showLoading({ title: '登录中', mask: true })
-    try {
-      await require('../../utils/sync').devLogin('mp')
-      this.refresh()
-      wx.hideLoading()
-      wx.showToast({ title: '已登录', icon: 'success' })
-    } catch (err) {
-      wx.hideLoading()
-      wx.showToast({ title: (err && err.message) || '登录失败', icon: 'none' })
     }
   },
 

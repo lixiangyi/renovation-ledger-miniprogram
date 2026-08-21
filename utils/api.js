@@ -1,4 +1,4 @@
-const DEV_URL = 'http://127.0.0.1:8080'
+const DEV_URL = 'http://10.35.86.169:8080'
 const PROD_URL = 'https://api.renovation-ledger.app'
 
 function isDevelop() {
@@ -49,7 +49,7 @@ function request(path, { method = 'GET', data, token } = {}) {
       success(res) {
         if (res.statusCode === 401) {
           try {
-            require('./store').setPrefs({ jwt: '', cloudUserId: '' })
+            require('./store').setPrefs({ jwt: '', cloudUserId: '', phone: '', nickname: '我' })
           } catch (e) { /* ignore */ }
           reject({ code: 401, message: '请重新登录' })
         } else if (res.statusCode === 403) {
@@ -89,7 +89,7 @@ function setEnv(env) {
   wx.setStorageSync('cloudEnv', next)
   wx.setStorageSync('serverBaseUrl', urlOf(next))
   try {
-    require('./store').setPrefs({ jwt: '', cloudUserId: '' })
+    require('./store').setPrefs({ jwt: '', cloudUserId: '', phone: '', nickname: '我' })
   } catch (e) { /* ignore */ }
   return next
 }
