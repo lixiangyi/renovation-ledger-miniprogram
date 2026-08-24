@@ -9,9 +9,16 @@
       <text class="title">总览</text>
     </view>
     <view class="header-right">
+      <image wx:if="{{avatarPath}}" class="header-avatar" src="{{avatarPath}}" mode="aspectFill" bindtap="openProfile" />
+      <view wx:else class="header-avatar placeholder" bindtap="openProfile">{{nickname[0] || '我'}}</view>
       <text class="search-icon" bindtap="goSearch">🔍</text>
-      <text class="muted project-chip" bindtap="startRenameCurrent">{{projectName}}</text>
     </view>
+  </view>
+
+  <view class="account-ledger" wx:if="{{memberNames || projectDisplayName}}">
+    <text class="account-name" wx:if="{{memberNames}}">{{memberNames}}</text>
+    <text class="muted" wx:if="{{memberNames}}">的</text>
+    <text class="muted ledger-name-inline" bindtap="startRenameCurrent">{{projectDisplayName}}</text>
   </view>
 
   <view class="drawer-mask" wx:if="{{drawerOpen}}" bindtap="closeDrawer"></view>
@@ -22,7 +29,7 @@
       wx:for="{{projects}}"
       wx:key="id"
     >
-      <view class="drawer-item-main" data-id="{{item.id}}" bindtap="switchLedger">{{item.name}}</view>
+      <view class="drawer-item-main" data-id="{{item.id}}" bindtap="switchLedger">{{item.displayName || item.name}}</view>
       <text
         class="drawer-item-edit"
         data-id="{{item.id}}"

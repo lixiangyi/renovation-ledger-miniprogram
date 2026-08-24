@@ -41,10 +41,12 @@ Page({
     layout: PaymentListLayout.NESTED,
     tabs: [],
     groups: [],
+    contentReady: false,
     theme: {},
   },
 
   onShow() {
+    this.refresh()
     const that = this
     require('../../utils/sync').pullIfNeeded()
       .catch(function () { /* toast in sync */ })
@@ -180,6 +182,7 @@ Page({
       tabs,
       totalAmountText,
       groups,
+      contentReady: true,
     })
   },
 

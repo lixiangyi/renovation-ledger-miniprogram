@@ -31,7 +31,7 @@
     <text class="total-amount">{{totalAmountText}}</text>
   </view>
 
-  <view class="empty muted" wx:if="{{!groups.length}}">暂无支付项</view>
+  <view class="empty muted" wx:if="{{contentReady && !groups.length}}">暂无支付项</view>
 
   <block wx:for="{{groups}}" wx:key="key">
     <view class="card">

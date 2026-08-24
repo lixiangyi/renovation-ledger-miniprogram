@@ -12,6 +12,7 @@
     "pages/taxonomy/taxonomy",
     "pages/import/import",
     "pages/trash/trash",
+    "pages/profile/profile",
     "pages/settings/settings",
     "pages/search/search",
     "pages/debug/debug"

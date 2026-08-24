@@ -28,6 +28,7 @@ function defaultProject() {
     memberNames: ['我'],
     cloudLedgerId: '',
     cloudRevision: 0,
+    cloudLinkedAtEpochMs: 0,
   }
 }
 
@@ -170,6 +171,7 @@ function viewOf(raw) {
   if (!Array.isArray(project.memberNames)) project.memberNames = ['我']
   if (!project.cloudLedgerId) project.cloudLedgerId = ''
   if (project.cloudRevision == null) project.cloudRevision = 0
+  if (project.cloudLinkedAtEpochMs == null) project.cloudLinkedAtEpochMs = 0
   const items = (raw.items || []).filter((i) => i && i.projectId === project.id)
   return {
     prefs: raw.prefs || defaultPrefs(),
@@ -354,6 +356,7 @@ function addCloudPlaceholder(summary) {
     memberNames: [],
     cloudLedgerId: summary.id,
     cloudRevision: summary.revision || 0,
+    cloudLinkedAtEpochMs: summary.createdAtEpochMs || Date.now(),
   })
   writeRaw(raw)
   return viewOf(raw)
@@ -367,6 +370,7 @@ function createProject(name, nickname) {
     memberNames: [String(nickname || raw.prefs.nickname || '我').trim() || '我'],
     cloudLedgerId: '',
     cloudRevision: 0,
+    cloudLinkedAtEpochMs: 0,
   }
   raw.projects.push(project)
   raw.currentProjectId = project.id
@@ -576,6 +580,57 @@ function moveProjectToTrash(projectId) {
   return viewOf(raw)
 }
 
+/**
+ * 移入垃圾箱并与账号解绑（OWNER 软删 / EDITOR leave）。返回 Promise。
+ */
+function moveProjectToTrashAsync(projectId) {
+  const trashCsv = require('./trashCsv')
+  const trashStore = require('./trashStore')
+  const snapshot = snapshotProjectForTrash(projectId)
+  const csvText = trashCsv.encode(snapshot)
+  trashStore.writeTrash(
+    projectId,
+    snapshot.project.name,
+    snapshot.items.length,
+    csvText,
+  )
+  const cloudId = snapshot.project && snapshot.project.cloudLedgerId
+  const jwt = !!((ensureRaw().prefs || {}).jwt)
+
+  function removeLocal() {
+    const raw = ensureRaw()
+    raw.projects = raw.projects.filter((p) => p.id !== projectId)
+    raw.items = raw.items.filter((i) => i.projectId !== projectId)
+    if (!raw.projects.length) {
+      writeRaw(raw)
+      return createProject('新账本')
+    }
+    if (raw.currentProjectId === projectId || !raw.projects.some((p) => p.id === raw.currentProjectId)) {
+      raw.currentProjectId = raw.projects[0].id
+    }
+    writeRaw(raw)
+    return viewOf(raw)
+  }
+
+  if (cloudId && jwt) {
+    return require('./sync').unbindCloudLedger(cloudId)
+      .catch(function (err) {
+        return { __unbindError: (err && err.message) || '云端解绑失败' }
+      })
+      .then(function (maybeErr) {
+        const view = removeLocal()
+        if (maybeErr && maybeErr.__unbindError) {
+          const e = new Error('已移入垃圾箱，但云端解绑失败：' + maybeErr.__unbindError)
+          e.partial = true
+          e.view = view
+          throw e
+        }
+        return view
+      })
+  }
+  return Promise.resolve(removeLocal())
+}
+
 function restoreFromTrash(entryId) {
   const trashCsv = require('./trashCsv')
   const trashStore = require('./trashStore')
@@ -636,6 +691,7 @@ module.exports = {
   clearAllItems,
   exportCsv,
   moveProjectToTrash,
+  moveProjectToTrashAsync,
   restoreFromTrash,
   purgeTrashEntry,
   listTrash,

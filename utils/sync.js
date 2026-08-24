@@ -109,6 +109,7 @@ function applySnapshot(snapshot) {
       name: snapshot.name,
       cloudLedgerId: snapshot.id,
       cloudRevision: snapshot.revision,
+      cloudLinkedAtEpochMs: current.project.cloudLinkedAtEpochMs || Date.now(),
     }),
     items: items,
   })
@@ -159,7 +160,8 @@ async function wechatLogin(code) {
     phone: res.phone || '',
   })
   if (res.nickname) store.setPrefs({ nickname: res.nickname })
-  return res
+  const action = await refreshOnOpen(true)
+  return Object.assign({}, res, { ledgerAction: action })
 }
 
 async function sendSmsCode(phone) {
@@ -186,13 +188,46 @@ async function smsLogin(phone, code) {
     phone: res.phone || phone,
   })
   if (res.nickname) store.setPrefs({ nickname: res.nickname })
-  return res
+  const action = await refreshOnOpen(true)
+  return Object.assign({}, res, { ledgerAction: action })
 }
 
 async function logout() {
   const store = require('./store')
   store.setPrefs({ jwt: '', cloudUserId: '', phone: '', nickname: '我' })
+  lastCloudSummaries = []
 }
+
+let lastCloudSummaries = []
+
+function getLastCloudSummaries() {
+  return lastCloudSummaries.slice()
+}
+
+async function switchToFirstAccountLedger(summaries) {
+  const store = require('./store')
+  const visibility = require('./ledgerVisibility')
+  const list = summaries || lastCloudSummaries
+  const cloudId = visibility.firstAccountCloudId(list)
+  if (cloudId) {
+    const local = (store.getState().projects || []).find((p) => p.cloudLedgerId === cloudId)
+    if (local) {
+      store.switchProject(local.id)
+      await pull()
+      return
+    }
+  }
+  const unbound = (store.getState().projects || []).find((p) => !p.cloudLedgerId)
+  if (unbound) {
+    store.switchProject(unbound.id)
+    return
+  }
+  store.createProject('新账本')
+  try {
+    await createCloudForCurrent()
+  } catch (e) { /* keep local */ }
+}
+
 
 async function fetchMe() {
   const store = require('./store')
@@ -255,16 +290,34 @@ async function createCloudForCurrent() {
   return snapshot
 }
 
-async function refreshOnOpen() {
+async function refreshOnOpen(fromLogin) {
   const store = require('./store')
   const state = store.getState()
-  if (!state.prefs.jwt) return null
+  if (!state.prefs.jwt) {
+    lastCloudSummaries = []
+    return { action: 'none' }
+  }
   try {
     await fetchMe()
   } catch (e) { /* keep local cache */ }
   const summaries = await api.request('/ledgers')
-  ;(summaries || []).forEach((s) => store.addCloudPlaceholder(s))
-  return pull()
+  lastCloudSummaries = Array.isArray(summaries) ? summaries : []
+  ;(lastCloudSummaries || []).forEach((s) => store.addCloudPlaceholder(s))
+  const current = store.getState().project || {}
+  const cloudIds = {}
+  lastCloudSummaries.forEach((s) => { if (s && s.id) cloudIds[s.id] = true })
+  if (!current.cloudLedgerId) {
+    if (fromLogin) {
+      return { action: 'offerBind', projectId: current.id, projectName: current.name || '当前账本' }
+    }
+    return { action: 'none' }
+  }
+  if (!cloudIds[current.cloudLedgerId]) {
+    await switchToFirstAccountLedger(lastCloudSummaries)
+    return { action: 'switchedAway' }
+  }
+  await pull()
+  return { action: 'none' }
 }
 
 async function importCurrent() {
@@ -297,13 +350,23 @@ async function pull() {
       await pushItem(pending[i])
     } catch (e) { /* keep going */ }
   }
-  const snapshot = await api.request('/ledgers/' + cloudId)
-  applySnapshot(snapshot)
-  return snapshot
+  try {
+    const snapshot = await api.request('/ledgers/' + cloudId)
+    applySnapshot(snapshot)
+    return snapshot
+  } catch (err) {
+    if (err && err.code === 403) {
+      await switchToFirstAccountLedger()
+      wx.showToast({ title: '已切换到当前账号的账本', icon: 'none' })
+      return null
+    }
+    toastMapped(err)
+    throw err
+  }
 }
 
 async function pullIfNeeded() {
-  return refreshOnOpen()
+  return refreshOnOpen(false)
 }
 
 async function pushItem(itemId) {
@@ -363,6 +426,19 @@ async function createInvite() {
   return api.request('/ledgers/' + cloudId + '/invites', { method: 'POST' })
 }
 
+async function previewInvite(code) {
+  const normalized = String(code || '').trim()
+  if (!normalized) throw { message: '请输入邀请码' }
+  return api.request('/invites/' + encodeURIComponent(normalized) + '/preview')
+}
+
+async function listMembers(cloudLedgerId) {
+  const cloudId = String(cloudLedgerId || '').trim()
+  if (!cloudId) return []
+  const list = await api.request('/ledgers/' + cloudId + '/members')
+  return Array.isArray(list) ? list : []
+}
+
 async function renameLedger(projectId, name) {
   const store = require('./store')
   store.renameProject(projectId, name)
@@ -410,7 +486,49 @@ async function joinInvite(code) {
     data: { code: String(code || '').trim() },
   })
   applySnapshot(snapshot)
+  try {
+    const members = await listMembers(snapshot.id)
+    const names = require('./ledgerOwnerDisplay').namesOwnerFirst(members)
+    if (names.length) {
+      const store = require('./store')
+      store.setProject({ memberNames: names })
+    }
+  } catch (e) { /* keep snapshot members */ }
   return snapshot
+}
+
+async function unbindCloudLedger(cloudLedgerId) {
+  const store = require('./store')
+  const cloudId = String(cloudLedgerId || '').trim()
+  if (!cloudId || !(store.getState().prefs || {}).jwt) return
+  let role = null
+  let found = false
+  ;(lastCloudSummaries || []).forEach((s) => {
+    if (s && s.id === cloudId) {
+      found = true
+      role = s.role
+    }
+  })
+  if (!found) {
+    try {
+      const summaries = await api.request('/ledgers')
+      lastCloudSummaries = Array.isArray(summaries) ? summaries : []
+      lastCloudSummaries.forEach((s) => {
+        if (s && s.id === cloudId) {
+          found = true
+          role = s.role
+        }
+      })
+    } catch (e) { /* fall through */ }
+  }
+  if (!found) return
+  const isEditor = String(role || '').toUpperCase() === 'EDITOR'
+  if (isEditor) {
+    await api.request('/ledgers/' + cloudId + '/leave', { method: 'POST' })
+  } else {
+    await api.request('/ledgers/' + cloudId, { method: 'DELETE' })
+  }
+  lastCloudSummaries = (lastCloudSummaries || []).filter((s) => s && s.id !== cloudId)
 }
 
 module.exports = {
@@ -430,6 +548,10 @@ module.exports = {
   pushItem,
   pushDelete,
   createInvite,
+  previewInvite,
+  listMembers,
   joinInvite,
   renameLedger,
+  getLastCloudSummaries,
+  unbindCloudLedger,
 }

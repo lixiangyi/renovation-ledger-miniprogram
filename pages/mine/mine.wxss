@@ -30,6 +30,12 @@
 }
 .ledger-name { flex: 1; }
 .ledger-del { color: #c62828; font-size: 26rpx; padding: 8rpx; }
+.member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10rpx 0;
+}
 .field {
   display: flex;
   align-items: center;

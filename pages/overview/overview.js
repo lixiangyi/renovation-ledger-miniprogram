@@ -47,6 +47,8 @@ function themeCssVars(theme) {
 Page({
   data: Object.assign({
     projectName: '',
+    projectDisplayName: '',
+    memberNames: '',
     currentProjectId: '',
     projects: [],
     drawerOpen: false,
@@ -68,15 +70,19 @@ Page({
     overspendMore: 0,
     surplusMore: 0,
     loadError: '',
+    contentReady: false,
     voiceOpen: false,
     voiceStatus: '',
     voiceDraft: '',
     voiceTypedVisible: false,
     voiceBusy: false,
+    nickname: '我',
+    avatarPath: '',
   }, getExpandState()),
 
   onShow() {
     this.setData(getExpandState())
+    this.refresh()
     const that = this
     require('../../utils/sync').pullIfNeeded()
       .catch(function () { /* toast in sync */ })
@@ -97,9 +103,14 @@ Page({
     store.switchProject(id)
     this.setData({ drawerOpen: false })
     const that = this
-    require('../../utils/sync').pull()
-      .catch(function () { /* toast in sync */ })
-      .then(function () { that.refresh() })
+    const project = (store.getState().projects || []).find((p) => p.id === id)
+    if (project && project.cloudLedgerId && (store.getState().prefs || {}).jwt) {
+      require('../../utils/sync').pull()
+        .catch(function () { /* toast in sync */ })
+        .then(function () { that.refresh() })
+    } else {
+      that.refresh()
+    }
   },
 
   startCreateLedger() {
@@ -183,21 +194,37 @@ Page({
     const id = e.currentTarget.dataset.id
     const name = e.currentTarget.dataset.name || '账本'
     if (!id) return
+    const state = store.getState()
+    const project = (state.projects || []).find((p) => p.id === id) || {}
+    const sync = require('../../utils/sync')
+    const gates = require('../../utils/ledgerRoleGates')
+    const role = gates.roleOf(project.cloudLedgerId, sync.getLastCloudSummaries())
+    const copy = require('../../utils/deleteLedgerCopy').forRole(
+      role,
+      name,
+      !!project.cloudLedgerId,
+    )
     const that = this
     wx.showModal({
-      title: '移入垃圾箱',
-      content: '将「' + name + '」移入垃圾箱。会先导出备份，之后可从垃圾箱恢复；永久删除前仍可找回。',
-      confirmText: '移入',
+      title: copy.title,
+      content: copy.body,
+      confirmText: copy.confirm,
       success(res) {
         if (!res.confirm) return
-        try {
-          store.moveProjectToTrash(id)
-          that.setData({ drawerOpen: false })
-          that.refresh()
-          wx.showToast({ title: '已移入垃圾箱', icon: 'success' })
-        } catch (err) {
-          wx.showToast({ title: (err && err.message) || '删除失败', icon: 'none' })
-        }
+        store.moveProjectToTrashAsync(id)
+          .then(function () {
+            that.setData({ drawerOpen: false })
+            that.refresh()
+            wx.showToast({ title: '已移入垃圾箱', icon: 'success' })
+          })
+          .catch(function (err) {
+            that.setData({ drawerOpen: false })
+            that.refresh()
+            wx.showToast({
+              title: (err && err.message) || '删除失败',
+              icon: 'none',
+            })
+          })
       },
     })
   },
@@ -281,10 +308,28 @@ Page({
       const overspendGapTotal = overspend.reduce((s, r) => s + r.amount, 0)
       const surplusGapTotal = surplus.reduce((s, r) => s + r.amount, 0)
 
+      const visibility = require('../../utils/ledgerVisibility')
+      const jwt = !!(prefs.jwt)
+      const summaries = require('../../utils/sync').getLastCloudSummaries() || []
+      const visible = visibility.visible(state.projects || [project], summaries, jwt)
+      const drawerProjects = visible.map((v) => Object.assign({}, v.project, {
+        displayName: v.displayName,
+      }))
+      const currentVisible = visible.find((v) => v.project.id === project.id)
+      const members = (project.memberNames && project.memberNames.length)
+        ? project.memberNames
+        : [prefs.nickname || '我']
+      const ownerName = require('../../utils/ledgerOwnerDisplay').nickname(members)
+
       this.setData({
         projectName: project.name || '我家装修',
+        projectDisplayName: (currentVisible && currentVisible.displayName)
+          || project.name
+          || '我家装修',
+        memberNames: ownerName,
+        contentReady: true,
         currentProjectId: state.currentProjectId || project.id || '',
-        projects: state.projects || [project],
+        projects: drawerProjects,
         theme: safeTheme,
         cssVars: themeCssVars(safeTheme),
         healthClass: hintHealthClass(metrics.currentOverspend, currentHealth),
@@ -313,6 +358,8 @@ Page({
         })),
         overspendMore: Math.max(0, overspend.length - 5),
         surplusMore: Math.max(0, surplus.length - 5),
+        nickname: prefs.nickname || '我',
+        avatarPath: prefs.avatarPath || '',
         loadError: '',
       })
     } catch (e) {
@@ -366,6 +413,10 @@ Page({
 
   goSearch() {
     wx.navigateTo({ url: '/pages/search/search' })
+  },
+
+  openProfile() {
+    wx.navigateTo({ url: '/pages/profile/profile' })
   },
 
   goEntry() {

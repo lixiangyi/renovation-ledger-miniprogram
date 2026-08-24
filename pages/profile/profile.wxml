@@ -1,0 +1,41 @@
+<view class="page" style="background: {{theme.pageBg}};{{cssVars}}">
+  <view class="card">
+    <view class="card-title">资料</view>
+    <view class="avatar-wrap" bindtap="chooseAvatar">
+      <image wx:if="{{avatarPath}}" class="avatar" src="{{avatarPath}}" mode="aspectFill" />
+      <view wx:else class="avatar placeholder">头像</view>
+      <text class="hint">点击更换头像</text>
+    </view>
+    <button wx:if="{{avatarPath}}" class="btn-ghost" size="mini" bindtap="clearAvatar">清除头像</button>
+    <view class="field">
+      <text class="label">昵称</text>
+      <input value="{{nickname}}" bindinput="onNicknameInput" bindblur="onNicknameBlur" placeholder="我" />
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">云同步</view>
+    <view class="muted">{{jwt ? '已登录' : '未登录'}}</view>
+    <view class="muted" wx:if="{{isDevelop}}">开发版可在设置/调试中切换服务器地址</view>
+    <block wx:if="{{!jwt}}">
+      <button class="btn-primary spaced" bindtap="openLogin">去登录</button>
+    </block>
+    <block wx:if="{{jwt}}">
+      <button class="btn-ghost spaced" bindtap="logout">退出登录</button>
+      <button wx:if="{{!phone}}" class="btn-ghost spaced" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber">绑定手机号</button>
+      <button wx:if="{{currentUnbound}}" class="btn-ghost spaced" bindtap="uploadLedger">上传当前账本</button>
+      <button wx:if="{{showCreateInvite}}" class="btn-ghost spaced" bindtap="createInvite">生成邀请码</button>
+      <view class="invite-code" wx:if="{{showCreateInvite && lastInviteCode}}" bindtap="copyInviteShare">
+        <view class="invite-code-main">邀请码 {{lastInviteCode}}</view>
+        <view class="muted">点击复制（含 App 介绍，可发给家人）</view>
+      </view>
+      <view class="field row">
+        <text class="label">邀请码</text>
+        <view class="input-wrap">
+          <input value="{{inviteInput}}" placeholder="输入邀请码加入" bindinput="onInviteInput" />
+        </view>
+      </view>
+      <button class="btn-primary" bindtap="joinInvite">加入账本</button>
+    </block>
+  </view>
+</view>

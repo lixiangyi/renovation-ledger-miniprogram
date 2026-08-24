@@ -1,19 +1,5 @@
 <view class="page" style="background: {{theme.pageBg}};">
   <view class="card">
-    <view class="card-title">资料</view>
-    <view class="avatar-wrap" bindtap="chooseAvatar">
-      <image wx:if="{{avatarPath}}" class="avatar" src="{{avatarPath}}" mode="aspectFill" />
-      <view wx:else class="avatar placeholder">头像</view>
-      <text class="hint">点击更换头像</text>
-    </view>
-    <button wx:if="{{avatarPath}}" class="btn-ghost" size="mini" bindtap="clearAvatar">清除头像</button>
-    <view class="field">
-      <text class="label">昵称</text>
-      <input value="{{nickname}}" bindinput="onNicknameInput" bindblur="onNicknameBlur" placeholder="我" />
-    </view>
-  </view>
-
-  <view class="card">
     <view class="card-title">版本</view>
     <view>v{{version}}</view>
   </view>

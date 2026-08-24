@@ -13,6 +13,30 @@ function formatPhoneDisplay(digits) {
   return d.slice(0, 3) + ' ' + d.slice(3, 7) + ' ' + d.slice(7)
 }
 
+function offerBindIfNeeded(action) {
+  if (!action || action.action !== 'offerBind') return
+  const name = action.projectName || '当前账本'
+  wx.showModal({
+    title: '绑定账本',
+    content: '「' + name + '」尚未绑定账号。上传后将同步到当前账号；取消则仅本机使用。',
+    confirmText: '上传',
+    cancelText: '暂不上传',
+    success(res) {
+      if (!res.confirm) return
+      wx.showLoading({ title: '上传中', mask: true })
+      require('../../utils/sync').importCurrent()
+        .then(() => {
+          wx.hideLoading()
+          wx.showToast({ title: '已上传到云端', icon: 'success' })
+        })
+        .catch((err) => {
+          wx.hideLoading()
+          wx.showToast({ title: (err && err.message) || '上传失败', icon: 'none' })
+        })
+    },
+  })
+}
+
 Page({
   data: {
     tab: 'phone',
@@ -92,9 +116,10 @@ Page({
     this.setData({ busy: true })
     wx.showLoading({ title: '登录中', mask: true })
     try {
-      await require('../../utils/sync').smsLogin(phone, code)
+      const res = await require('../../utils/sync').smsLogin(phone, code)
       wx.hideLoading()
       this.setData({ busy: false })
+      offerBindIfNeeded(res && res.ledgerAction)
       wx.showToast({ title: '已登录', icon: 'success' })
       setTimeout(() => wx.navigateBack(), 400)
     } catch (err) {
@@ -116,9 +141,10 @@ Page({
         that.setData({ busy: true })
         wx.showLoading({ title: '登录中', mask: true })
         try {
-          await require('../../utils/sync').wechatLogin(res.code)
+          const out = await require('../../utils/sync').wechatLogin(res.code)
           wx.hideLoading()
           that.setData({ busy: false })
+          offerBindIfNeeded(out && out.ledgerAction)
           wx.showToast({ title: '已登录', icon: 'success' })
           setTimeout(() => wx.navigateBack(), 400)
         } catch (err) {
