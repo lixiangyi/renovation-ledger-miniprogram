@@ -160,6 +160,7 @@ async function wechatLogin(code) {
     phone: res.phone || '',
   })
   if (res.nickname) store.setPrefs({ nickname: res.nickname })
+  await applyAvatarUrl(res.avatarUrl)
   const action = await refreshOnOpen(true)
   return Object.assign({}, res, { ledgerAction: action })
 }
@@ -188,14 +189,16 @@ async function smsLogin(phone, code) {
     phone: res.phone || phone,
   })
   if (res.nickname) store.setPrefs({ nickname: res.nickname })
+  await applyAvatarUrl(res.avatarUrl)
   const action = await refreshOnOpen(true)
   return Object.assign({}, res, { ledgerAction: action })
 }
 
 async function logout() {
   const store = require('./store')
-  store.setPrefs({ jwt: '', cloudUserId: '', phone: '', nickname: '我' })
+  store.setPrefs({ jwt: '', cloudUserId: '', phone: '', nickname: '我', avatarPath: '' })
   lastCloudSummaries = []
+  store.purgeBoundLocalLedgersOnLogout()
 }
 
 let lastCloudSummaries = []
@@ -236,6 +239,7 @@ async function fetchMe() {
   const patch = { nickname: (me && me.nickname) || '我' }
   if (me && me.phone !== undefined) patch.phone = me.phone || ''
   store.setPrefs(patch)
+  await applyAvatarUrl(me && me.avatarUrl)
   return me
 }
 
@@ -254,7 +258,87 @@ async function updateNickname(nickname) {
     nickname: (me && me.nickname) || value,
     phone: me && me.phone !== undefined ? (me.phone || '') : store.getState().prefs.phone,
   })
+  if (me && me.avatarUrl !== undefined) {
+    await applyAvatarUrl(me.avatarUrl)
+  }
   return (me && me.nickname) || value
+}
+
+function ensureAvatarDir() {
+  const fs = wx.getFileSystemManager()
+  const dir = wx.env.USER_DATA_PATH + '/avatars'
+  try {
+    fs.accessSync(dir)
+  } catch (e) {
+    try { fs.mkdirSync(dir, true) } catch (err) { /* ignore */ }
+  }
+  return dir
+}
+
+function cacheRemoteAvatar(relativeUrl) {
+  const url = api.getBaseUrl() + relativeUrl
+  const name = String(relativeUrl || '').split('/').pop() || ('avatar_' + Date.now() + '.jpg')
+  return new Promise((resolve) => {
+    wx.downloadFile({
+      url,
+      success(res) {
+        if (res.statusCode !== 200 || !res.tempFilePath) {
+          resolve('')
+          return
+        }
+        const fs = wx.getFileSystemManager()
+        const dest = ensureAvatarDir() + '/cloud_' + name
+        try {
+          fs.saveFileSync(res.tempFilePath, dest)
+          resolve(dest)
+        } catch (err) {
+          try {
+            fs.copyFileSync(res.tempFilePath, dest)
+            resolve(dest)
+          } catch (e2) {
+            resolve(res.tempFilePath)
+          }
+        }
+      },
+      fail: () => resolve(''),
+    })
+  })
+}
+
+async function applyAvatarUrl(avatarUrl) {
+  const store = require('./store')
+  const value = String(avatarUrl || '').trim()
+  if (!value) {
+    store.setPrefs({ avatarPath: '' })
+    return
+  }
+  if (value.indexOf('/avatars/') === 0) {
+    const local = await cacheRemoteAvatar(value)
+    store.setPrefs({ avatarPath: local || (api.getBaseUrl() + value) })
+    return
+  }
+  store.setPrefs({ avatarPath: value })
+}
+
+async function uploadAvatar(localPath) {
+  const store = require('./store')
+  if (!store.getState().prefs.jwt) {
+    store.setPrefs({ avatarPath: localPath })
+    return localPath
+  }
+  const me = await api.uploadFile('/me/avatar', localPath, { name: 'file' })
+  await applyAvatarUrl(me && me.avatarUrl)
+  return (me && me.avatarUrl) || localPath
+}
+
+async function clearAvatar() {
+  const store = require('./store')
+  if (!store.getState().prefs.jwt) {
+    store.setPrefs({ avatarPath: '' })
+    return
+  }
+  const me = await api.request('/me/avatar', { method: 'DELETE' })
+  await applyAvatarUrl(me && me.avatarUrl)
 }
 
 async function pingHealth() {
@@ -274,6 +358,8 @@ async function bindPhone(phoneCode) {
     cloudUserId: res.userId || store.getState().prefs.cloudUserId,
     phone: res.phone || '',
   })
+  if (res.nickname) store.setPrefs({ nickname: res.nickname })
+  await applyAvatarUrl(res.avatarUrl)
   return res
 }
 
@@ -538,6 +624,8 @@ module.exports = {
   logout,
   fetchMe,
   updateNickname,
+  uploadAvatar,
+  clearAvatar,
   pingHealth,
   bindPhone,
   importCurrent,

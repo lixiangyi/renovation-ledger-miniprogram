@@ -581,6 +581,28 @@ function moveProjectToTrash(projectId) {
 }
 
 /**
+ * 退出登录：硬删所有已绑定云端的本地账本（不进垃圾箱、不解绑云端）。
+ * 保留未绑定本；若无剩余则新建「新账本」。
+ */
+function purgeBoundLocalLedgersOnLogout() {
+  const raw = ensureRaw()
+  const keep = (raw.projects || []).filter((p) => !p || !p.cloudLedgerId)
+  const keepIds = {}
+  keep.forEach((p) => { if (p && p.id) keepIds[p.id] = true })
+  raw.projects = keep
+  raw.items = (raw.items || []).filter((i) => i && keepIds[i.projectId])
+  if (!raw.projects.length) {
+    writeRaw(raw)
+    return createProject('新账本')
+  }
+  if (!raw.projects.some((p) => p.id === raw.currentProjectId)) {
+    raw.currentProjectId = raw.projects[0].id
+  }
+  writeRaw(raw)
+  return viewOf(raw)
+}
+
+/**
  * 移入垃圾箱并与账号解绑（OWNER 软删 / EDITOR leave）。返回 Promise。
  */
 function moveProjectToTrashAsync(projectId) {
@@ -690,6 +712,7 @@ module.exports = {
   resetSample,
   clearAllItems,
   exportCsv,
+  purgeBoundLocalLedgersOnLogout,
   moveProjectToTrash,
   moveProjectToTrashAsync,
   restoreFromTrash,

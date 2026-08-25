@@ -49,7 +49,13 @@ function request(path, { method = 'GET', data, token } = {}) {
       success(res) {
         if (res.statusCode === 401) {
           try {
-            require('./store').setPrefs({ jwt: '', cloudUserId: '', phone: '', nickname: '我' })
+            require('./store').setPrefs({
+              jwt: '',
+              cloudUserId: '',
+              phone: '',
+              nickname: '我',
+              avatarPath: '',
+            })
           } catch (e) { /* ignore */ }
           reject({ code: 401, message: '请重新登录' })
         } else if (res.statusCode === 403) {
@@ -74,6 +80,45 @@ function request(path, { method = 'GET', data, token } = {}) {
   })
 }
 
+function uploadFile(path, filePath, { name = 'file', token } = {}) {
+  const base = getBaseUrl()
+  const auth = token !== undefined ? token : getToken()
+  return new Promise((resolve, reject) => {
+    wx.uploadFile({
+      url: base + path,
+      filePath,
+      name,
+      header: auth ? { Authorization: 'Bearer ' + auth } : {},
+      success(res) {
+        let data = res.data
+        if (typeof data === 'string') {
+          try {
+            data = JSON.parse(data)
+          } catch (e) { /* keep string */ }
+        }
+        if (res.statusCode === 401) {
+          try {
+            require('./store').setPrefs({
+              jwt: '',
+              cloudUserId: '',
+              phone: '',
+              nickname: '我',
+              avatarPath: '',
+            })
+          } catch (e) { /* ignore */ }
+          reject({ code: 401, message: '请重新登录' })
+        } else if (res.statusCode >= 400) {
+          const msg = (data && (data.message || data.error)) || '上传失败'
+          reject({ code: res.statusCode, message: msg, body: data })
+        } else {
+          resolve(data)
+        }
+      },
+      fail: reject,
+    })
+  })
+}
+
 function setBaseUrl(url) {
   const value = String(url || '').trim()
   if (!value) {
@@ -89,13 +134,14 @@ function setEnv(env) {
   wx.setStorageSync('cloudEnv', next)
   wx.setStorageSync('serverBaseUrl', urlOf(next))
   try {
-    require('./store').setPrefs({ jwt: '', cloudUserId: '', phone: '', nickname: '我' })
+    require('./store').setPrefs({ jwt: '', cloudUserId: '', phone: '', nickname: '我', avatarPath: '' })
   } catch (e) { /* ignore */ }
   return next
 }
 
 module.exports = {
   request,
+  uploadFile,
   getBaseUrl,
   setBaseUrl,
   getToken,

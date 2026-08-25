@@ -1,12 +1,28 @@
 const store = require('../../utils/store')
 const themeUtil = require('../../utils/theme')
 
-const DEFAULT_THEME = {
+const FALLBACK_THEME = {
   pageBg: '#E8F5E9',
   primary: '#2E7D32',
   primaryContainer: '#C8E6C9',
   tabBg: '#DCECDC',
   levelClass: '',
+}
+
+const INITIAL_THEME = (function () {
+  try {
+    const { theme } = themeUtil.resolveTheme()
+    return theme && theme.primary ? theme : FALLBACK_THEME
+  } catch (e) {
+    return FALLBACK_THEME
+  }
+})()
+
+function themeCssVars(theme) {
+  const t = theme && theme.primary ? theme : FALLBACK_THEME
+  return '--page-bg:' + t.pageBg
+    + ';--primary:' + t.primary
+    + ';--primary-container:' + t.primaryContainer + ';'
 }
 
 Page({
@@ -20,8 +36,8 @@ Page({
     healthColorEnabled: true,
     mildOverMaxPercent: 15,
     showHealthColorSettings: true,
-    theme: DEFAULT_THEME,
-    cssVars: '--page-bg:#E8F5E9;--primary:#2E7D32;--primary-container:#C8E6C9;',
+    theme: INITIAL_THEME,
+    cssVars: themeCssVars(INITIAL_THEME),
     jwt: '',
     loadError: '',
   },
@@ -33,7 +49,7 @@ Page({
   refresh() {
     try {
       const { state, theme } = themeUtil.applyTheme(this)
-      const safeTheme = theme && theme.primary ? theme : DEFAULT_THEME
+      const safeTheme = theme && theme.primary ? theme : FALLBACK_THEME
       const sync = require('../../utils/sync')
       const gates = require('../../utils/ledgerRoleGates')
       const jwt = (state.prefs && state.prefs.jwt) || ''
@@ -43,9 +59,7 @@ Page({
       const localNames = (state.project && state.project.memberNames) || []
       this.setData({
         theme: safeTheme,
-        cssVars: '--page-bg:' + safeTheme.pageBg
-          + ';--primary:' + safeTheme.primary
-          + ';--primary-container:' + safeTheme.primaryContainer + ';',
+        cssVars: themeCssVars(safeTheme),
         nickname: (state.prefs && state.prefs.nickname) || '我',
         avatarPath: (state.prefs && state.prefs.avatarPath) || '',
         projectName: (state.project && state.project.name) || '我家装修',
@@ -68,7 +82,8 @@ Page({
       console.error('mine refresh failed', e)
       this.setData({
         loadError: (e && e.message) || '页面加载失败',
-        theme: DEFAULT_THEME,
+        theme: FALLBACK_THEME,
+        cssVars: themeCssVars(FALLBACK_THEME),
       })
     }
   },

@@ -1,13 +1,14 @@
 /**
  * 登录后账本可见性：账号云本按上传时间升序；未绑定本地本标「（本地）」排末尾；他人云本隐藏。
+ * 未登录：仅展示未绑定本（已绑定本应在退出时硬删）。
  */
 function visible(projects, cloudSummaries, loggedIn) {
   const list = Array.isArray(projects) ? projects : []
   const summaries = Array.isArray(cloudSummaries) ? cloudSummaries : []
   if (!loggedIn) {
-    return list.map((p) => ({
+    return list.filter((p) => !p || !p.cloudLedgerId).map((p) => ({
       project: p,
-      displayName: p.name || '账本',
+      displayName: (p && p.name) || '账本',
       isLocalUnbound: false,
     }))
   }
@@ -54,7 +55,7 @@ function firstAccountCloudId(summaries) {
 }
 
 function isAccessible(project, cloudIds, loggedIn) {
-  if (!loggedIn) return true
+  if (!loggedIn) return !(project && project.cloudLedgerId)
   const cid = project && project.cloudLedgerId
   if (!cid) return true
   if (Array.isArray(cloudIds)) {

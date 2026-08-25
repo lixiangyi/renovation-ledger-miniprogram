@@ -17,7 +17,7 @@
 
   <view class="account-ledger" wx:if="{{memberNames || projectDisplayName}}">
     <text class="account-name" wx:if="{{memberNames}}">{{memberNames}}</text>
-    <text class="muted" wx:if="{{memberNames}}">的</text>
+    <text class="muted" wx:if="{{memberNames}}">的账本：</text>
     <text class="muted ledger-name-inline" bindtap="startRenameCurrent">{{projectDisplayName}}</text>
   </view>
 

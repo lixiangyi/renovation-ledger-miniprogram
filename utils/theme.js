@@ -1,7 +1,8 @@
 const store = require('./store')
 const { calculateMetrics, resolveHealth, healthTheme } = require('./metrics')
 
-function applyTheme(page) {
+/** Sync resolve from local store — use for Page data() so first paint is not green DEFAULT. */
+function resolveTheme() {
   const state = store.getState()
   const metrics = calculateMetrics(state.items)
   const level = resolveHealth(
@@ -10,6 +11,12 @@ function applyTheme(page) {
     state.prefs.mildOverMaxPercent,
   )
   const theme = healthTheme(level, state.prefs.healthColorEnabled)
+  return { state, metrics, level, theme }
+}
+
+function applyTheme(page) {
+  const resolved = resolveTheme()
+  const { theme, level, state, metrics } = resolved
   if (page && page.setData) {
     page.setData({ theme, healthLevel: level })
   }
@@ -25,4 +32,5 @@ function applyTheme(page) {
 
 module.exports = {
   applyTheme,
+  resolveTheme,
 }

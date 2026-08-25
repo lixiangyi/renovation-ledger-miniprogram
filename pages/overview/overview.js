@@ -13,13 +13,22 @@ const aiKeys = require('../../utils/aiKeys')
 const dashScopeAsr = require('../../utils/dashScopeAsr')
 const voiceIntent = require('../../utils/voiceIntent')
 
-const DEFAULT_THEME = {
+const FALLBACK_THEME = {
   pageBg: '#E8F5E9',
   primary: '#2E7D32',
   primaryContainer: '#C8E6C9',
   tabBg: '#DCECDC',
   levelClass: '',
 }
+
+const INITIAL_THEME = (function () {
+  try {
+    const { theme } = themeUtil.resolveTheme()
+    return theme && theme.primary ? theme : FALLBACK_THEME
+  } catch (e) {
+    return FALLBACK_THEME
+  }
+})()
 
 function overspendText(amount) {
   if (amount > 0) return '超支 ' + fenToYuan(amount)
@@ -38,7 +47,7 @@ function budgetGapInfo(budgetAmount, actualAmount) {
 }
 
 function themeCssVars(theme) {
-  const t = theme && theme.primary ? theme : DEFAULT_THEME
+  const t = theme && theme.primary ? theme : FALLBACK_THEME
   return '--page-bg:' + t.pageBg
     + ';--primary:' + t.primary
     + ';--primary-container:' + t.primaryContainer + ';'
@@ -58,8 +67,8 @@ Page({
     renameProjectId: '',
     renameLedgerName: '',
     metrics: {},
-    theme: DEFAULT_THEME,
-    cssVars: themeCssVars(DEFAULT_THEME),
+    theme: INITIAL_THEME,
+    cssVars: themeCssVars(INITIAL_THEME),
     healthClass: '',
     projectedHealthClass: '',
     recent: [],
@@ -234,7 +243,7 @@ Page({
   refresh() {
     try {
       const { state, metrics, theme } = themeUtil.applyTheme(this)
-      const safeTheme = theme && theme.primary ? theme : DEFAULT_THEME
+      const safeTheme = theme && theme.primary ? theme : FALLBACK_THEME
       const prefs = state.prefs || {}
       const project = state.project || { id: '', name: '我家装修' }
       const items = state.items || []
@@ -366,8 +375,8 @@ Page({
       console.error('overview refresh failed', e)
       this.setData({
         loadError: (e && e.message) || '页面加载失败',
-        theme: DEFAULT_THEME,
-        cssVars: themeCssVars(DEFAULT_THEME),
+        theme: FALLBACK_THEME,
+        cssVars: themeCssVars(FALLBACK_THEME),
       })
     }
   },

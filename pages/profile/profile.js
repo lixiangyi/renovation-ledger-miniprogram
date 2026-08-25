@@ -2,7 +2,7 @@ const store = require('../../utils/store')
 const themeUtil = require('../../utils/theme')
 const sessionCloudUi = require('../../utils/sessionCloudUi')
 
-const DEFAULT_THEME = {
+const FALLBACK_THEME = {
   pageBg: '#E8F5E9',
   primary: '#2E7D32',
   primaryContainer: '#C8E6C9',
@@ -10,12 +10,28 @@ const DEFAULT_THEME = {
   levelClass: '',
 }
 
+const INITIAL_THEME = (function () {
+  try {
+    const { theme } = themeUtil.resolveTheme()
+    return theme && theme.primary ? theme : FALLBACK_THEME
+  } catch (e) {
+    return FALLBACK_THEME
+  }
+})()
+
+function themeCssVars(theme) {
+  const t = theme && theme.primary ? theme : FALLBACK_THEME
+  return '--page-bg:' + t.pageBg
+    + ';--primary:' + t.primary
+    + ';--primary-container:' + t.primaryContainer + ';'
+}
+
 Page({
   data: {
     nickname: '我',
     avatarPath: '',
-    theme: DEFAULT_THEME,
-    cssVars: '--page-bg:#E8F5E9;--primary:#2E7D32;--primary-container:#C8E6C9;',
+    theme: INITIAL_THEME,
+    cssVars: themeCssVars(INITIAL_THEME),
     jwt: '',
     phone: '',
     cloudUserId: '',
@@ -35,7 +51,7 @@ Page({
   refresh() {
     try {
       const { state, theme } = themeUtil.applyTheme(this)
-      const safeTheme = theme && theme.primary ? theme : DEFAULT_THEME
+      const safeTheme = theme && theme.primary ? theme : FALLBACK_THEME
       const prefs = (state && state.prefs) || {}
       const cloudUserId = prefs.cloudUserId || ''
       const sync = require('../../utils/sync')
@@ -45,9 +61,7 @@ Page({
       const role = gates.roleOf(cloudId, sync.getLastCloudSummaries())
       const patch = {
         theme: safeTheme,
-        cssVars: '--page-bg:' + safeTheme.pageBg
-          + ';--primary:' + safeTheme.primary
-          + ';--primary-container:' + safeTheme.primaryContainer + ';',
+        cssVars: themeCssVars(safeTheme),
         nickname: prefs.nickname || '我',
         avatarPath: prefs.avatarPath || '',
         jwt: jwt,
@@ -66,7 +80,7 @@ Page({
       this.setData(patch)
     } catch (e) {
       console.error('profile refresh failed', e)
-      this.setData({ theme: DEFAULT_THEME })
+      this.setData({ theme: FALLBACK_THEME, cssVars: themeCssVars(FALLBACK_THEME) })
     }
   },
 
@@ -128,29 +142,50 @@ Page({
           try { fs.mkdirSync(dir, true) } catch (err) { /* ignore */ }
         }
         const dest = dir + '/avatar_' + Date.now() + '.jpg'
+        let localPath = dest
         try {
           fs.saveFileSync(temp, dest)
-          store.setPrefs({ avatarPath: dest })
-          that.refresh()
-          wx.showToast({ title: '头像已更新', icon: 'success' })
         } catch (err) {
           try {
             fs.copyFileSync(temp, dest)
-            store.setPrefs({ avatarPath: dest })
-            that.refresh()
-            wx.showToast({ title: '头像已更新', icon: 'success' })
           } catch (e2) {
-            wx.showToast({ title: '头像保存失败', icon: 'none' })
+            localPath = temp
           }
         }
+        wx.showLoading({ title: '上传中', mask: true })
+        require('../../utils/sync').uploadAvatar(localPath)
+          .then(() => {
+            wx.hideLoading()
+            that.refresh()
+            wx.showToast({ title: '头像已更新', icon: 'success' })
+          })
+          .catch((e) => {
+            wx.hideLoading()
+            wx.showToast({
+              title: (e && e.message) || '头像更新失败',
+              icon: 'none',
+            })
+          })
       },
     })
   },
 
   clearAvatar() {
-    store.setPrefs({ avatarPath: '' })
-    this.refresh()
-    wx.showToast({ title: '已清除头像', icon: 'success' })
+    const that = this
+    wx.showLoading({ title: '处理中', mask: true })
+    require('../../utils/sync').clearAvatar()
+      .then(() => {
+        wx.hideLoading()
+        that.refresh()
+        wx.showToast({ title: '已清除头像', icon: 'success' })
+      })
+      .catch((e) => {
+        wx.hideLoading()
+        wx.showToast({
+          title: (e && e.message) || '清除头像失败',
+          icon: 'none',
+        })
+      })
   },
 
   async onGetPhoneNumber(e) {
