@@ -9,7 +9,31 @@
 | Android | [renovation-ledger](https://github.com/lixiangyi/renovation-ledger) |
 | 云端 API | [renovation-ledger-server](https://github.com/lixiangyi/renovation-ledger-server) |
 
-当前开发分支一般为 `dev-0.1`。
+当前开发分支一般为 `dev-0.1`。产品界面与 Android 对齐，预览图如下（同源 App 截图）。
+
+---
+
+## 界面预览
+
+<p>
+  <img src="docs/screenshots/01-overview.jpg" alt="总览" width="220" />
+  <img src="docs/screenshots/02-entry-chooser.jpg" alt="记一笔" width="220" />
+  <img src="docs/screenshots/03-payment-list.jpg" alt="支付清单" width="220" />
+</p>
+<p>
+  <img src="docs/screenshots/04-stats.jpg" alt="统计" width="220" />
+  <img src="docs/screenshots/05-mine.jpg" alt="我的" width="220" />
+  <img src="docs/screenshots/06-profile.jpg" alt="个人中心" width="220" />
+</p>
+
+| 截图 | 说明 |
+|------|------|
+| 总览 | 总预算、预计花费、已花费 / 待花费、最近记账 |
+| 记一笔 | 手动 / 语音 / 图片识别录入入口 |
+| 支付清单 | 状态筛选、阶段/分类/空间分组与合计 |
+| 统计 | 按分类看预计花费占比 |
+| 我的 | 成员角色、账本管理、垃圾箱入口 |
+| 个人中心 | 头像昵称、登录状态、邀请码加入 |
 
 ---
 
