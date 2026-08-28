@@ -1,5 +1,5 @@
-const DEV_URL = 'http://10.35.86.169:8080'
-const PROD_URL = 'https://api.renovation-ledger.app'
+const DEV_URL = 'http://111.229.202.28/test'
+const PROD_URL = 'http://111.229.202.28'
 
 function isDevelop() {
   try {
@@ -20,10 +20,29 @@ function urlOf(env) {
   return env === 'prod' ? PROD_URL : DEV_URL
 }
 
+function migrateStoredUrl(url) {
+  const bare = String(url || '').trim().replace(/\/$/, '')
+  if (
+    bare === 'https://api.renovation-ledger.app' ||
+    bare === 'http://api.renovation-ledger.app'
+  ) {
+    return PROD_URL
+  }
+  if (
+    bare === 'http://10.35.86.169:8080' ||
+    bare === 'http://10.0.2.2:8080' ||
+    bare === 'http://127.0.0.1:8080' ||
+    bare === 'http://127.0.0.1:18080'
+  ) {
+    return DEV_URL
+  }
+  return bare
+}
+
 function getBaseUrl() {
   const stored = wx.getStorageSync('serverBaseUrl')
   if (stored && String(stored).trim()) {
-    return String(stored).trim().replace(/\/$/, '')
+    return migrateStoredUrl(stored)
   }
   return urlOf(getEnv())
 }

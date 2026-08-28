@@ -6,11 +6,11 @@
       <view class="chip {{env === 'dev' ? 'active' : ''}}" bindtap="setDev">开发</view>
       <view class="chip {{env === 'prod' ? 'active' : ''}}" bindtap="setProd">正式</view>
     </view>
-    <view class="muted">{{env === 'dev' ? '开发默认电脑局域网' : '正式环境 api.renovation-ledger.app'}}</view>
+    <view class="muted">{{env === 'dev' ? '开发默认云测试 111.229.202.28/test' : '正式环境 111.229.202.28'}}</view>
     <view class="field">
       <text class="label">服务器</text>
       <view class="input-wrap">
-        <input value="{{serverBaseUrl}}" placeholder="http://10.35.86.169:8080" bindinput="onServerUrlInput" />
+        <input value="{{serverBaseUrl}}" placeholder="http://111.229.202.28/test" bindinput="onServerUrlInput" />
       </view>
     </view>
     <button class="btn-ghost spaced" bindtap="saveServerUrl">保存服务器地址</button>
